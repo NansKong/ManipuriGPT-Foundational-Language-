@@ -26,6 +26,9 @@ env/
 # Tests are kept local and are not pushed with this repository
 tests/
 
+# Local project proposal document
+Proposal.pdf
+
 # Local data, downloads, and temporary processing state
 cache/
 data/
@@ -34,7 +37,6 @@ logs/
 tmp/
 temp/
 *.log
-Proposal.pdf    # Proposal for the project
 
 # ML training/checkpoint state and large model files
 models/
