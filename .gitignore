@@ -34,6 +34,7 @@ logs/
 tmp/
 temp/
 *.log
+Proposal.pdf    # Proposal for the project
 
 # ML training/checkpoint state and large model files
 models/
