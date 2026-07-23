@@ -23,6 +23,9 @@ env/
 .vscode/
 .idea/
 
+# Tests are kept local and are not pushed with this repository
+tests/
+
 # Local data, downloads, and temporary processing state
 cache/
 data/
