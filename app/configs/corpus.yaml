@@ -1,0 +1,56 @@
+# ManipuriGPT Streaming Corpus Configuration (Phase 5)
+# Configures iterable ingestion across 16+ canonical datasets and local custom data.
+
+streaming:
+  chunk_size: 2048
+  chunk_overlap: 128
+  buffer_size: 10000
+  target_languages: ["mni", "en", "bn", "hi"]
+  target_scripts: ["Meitei_Mayek", "Bengali", "Latin"]
+
+sources:
+  - name: "huggingface"
+    dataset_id: "ai4bharat/sangraha"
+    split: "train"
+    streaming: true
+    weight: 0.25
+  - name: "wikipedia"
+    dataset_id: "wikipedia"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "common_crawl"
+    dataset_id: "allenai/c4"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "fineweb"
+    dataset_id: "HuggingFaceFW/fineweb"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "ai4bharat"
+    dataset_id: "ai4bharat/indic_corpus"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "manipuri_specific"
+    dataset_id: "manipurigpt/curated_meiteilon"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "dayananda_meitei_mayek_sample"
+    dataset_id: "DayanandaThokchom/meitei_mayek_sample"
+    split: "train"
+    streaming: true
+    weight: 0.20
+  - name: "dayananda_meitei_to_english"
+    dataset_id: "DayanandaThokchom/meitei-mayek-to-english"
+    split: "train"
+    streaming: true
+    weight: 0.15
+  - name: "dayananda_english_to_meitei"
+    dataset_id: "DayanandaThokchom/english-TO-meitei-mayek"
+    split: "train"
+    streaming: true
+    weight: 0.15

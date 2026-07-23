@@ -1,0 +1,32 @@
+# ManipuriGPT Evaluation Configuration (Phase 5)
+# Defines metric weighting and minimum pass thresholds across task scorecards.
+
+thresholds:
+  perplexity:
+    max_acceptable: 15.0
+    ideal: 4.0
+  bleu:
+    min_acceptable: 20.0
+    ideal: 35.0
+  chrf:
+    min_acceptable: 45.0
+    ideal: 65.0
+  rouge:
+    min_acceptable: 25.0
+    ideal: 45.0
+  accuracy:
+    min_acceptable: 65.0
+    ideal: 85.0
+  hallucination_rate:
+    max_acceptable: 10.0
+    ideal: 2.0
+
+tasks:
+  translation:
+    primary_metrics: ["bleu", "chrf"]
+  chat:
+    primary_metrics: ["rouge", "hallucination_rate"]
+  reasoning:
+    primary_metrics: ["accuracy", "perplexity"]
+  qa:
+    primary_metrics: ["accuracy", "f1"]

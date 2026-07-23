@@ -1,0 +1,56 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python build, test, and editor state
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Local data, downloads, and temporary processing state
+cache/
+data/
+datasets/
+logs/
+tmp/
+temp/
+*.log
+
+# ML training/checkpoint state and large model files
+models/
+checkpoints/
+runs/
+wandb/
+mlruns/
+lightning_logs/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.onnx
+*.gguf
+
+# Generated artifacts are reproducible outputs, not source-controlled state.
+# Add a deliberately selected final release artifact with `git add -f <path>`
+# only when it is suitable for the remote's file-size limits.
+artifacts/
+
+# Local virtual environment created for this project
+manipuri/

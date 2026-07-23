@@ -1,0 +1,10 @@
+-r base.txt
+torch
+transformers
+datasets
+trl
+peft
+accelerate
+bitsandbytes
+sentencepiece
+evaluate

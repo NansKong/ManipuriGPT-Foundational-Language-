@@ -1,0 +1,6 @@
+pyyaml
+python-dotenv
+pydantic
+rapidfuzz
+langdetect
+psutil

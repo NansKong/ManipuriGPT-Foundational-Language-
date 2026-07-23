@@ -1,0 +1,20 @@
+# Phase 5.2 Corpus Sampling Configuration
+
+sampling:
+  seed: 42
+  mode: "probabilistic"
+  temperature: 1.0
+
+  datasets:
+    fineweb: 0.35
+    wikipedia: 0.20
+    opus: 0.15
+    ai4bharat: 0.10
+    c4: 0.10
+    slimpajama: 0.10
+
+  languages:
+    en: 0.55
+    mni: 0.25
+    bn: 0.15
+    hi: 0.05

@@ -1,0 +1,33 @@
+# Phase 5.2 Pretraining Engine Configuration
+version: "5.2"
+
+paths:
+  cache_root: "D:/ManipuriGPT/cache"
+  datasets_dir: "datasets"
+  hub_dir: "hub"
+  transformers_dir: "transformers"
+  tmp_dir: "tmp"
+  shards_dir: "shards"
+  tokenizers_dir: "tokenizers"
+  benchmarks_dir: "benchmarks"
+  statistics_dir: "statistics"
+  logs_dir: "logs"
+
+sharding:
+  shard_size: 2000
+  format: "parquet"
+  output_dir: "cache/shards"
+  max_examples: 100000
+  buffer_size: 10000
+
+directories:
+  stats_dir: "cache/statistics"
+  tokenizers_dir: "cache/tokenizers"
+  benchmarks_dir: "cache/benchmarks"
+  shards_dir: "cache/shards"
+
+execution:
+  seed: 42
+  mock_fallback: true
+  checkpoint_interval: 1  # Checkpoint manifest after every shard
+  validate_shards: true

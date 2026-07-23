@@ -1,0 +1,145 @@
+# ─────────────────────────────────────────────────────────
+# Global dataset settings
+# ─────────────────────────────────────────────────────────
+datasets:
+  use_streaming: true
+  cache_dir: ./cache
+  train_split: train
+  validation_split: validation
+
+  # ─────────────────────────────────────────────────────────
+  # Dataset catalog — each entry defines a loadable source.
+  # Adding a new dataset = adding a new YAML block below.
+  #
+  # Fields:
+  #   provider:            "huggingface" or "local"
+  #   repo:                HuggingFace repo ID (provider=huggingface)
+  #   local_path:          filesystem path (provider=local)
+  #   subset:              HF dataset config/subset name
+  #   split:               default split to load
+  #   type:                "monolingual" | "translation" | "parallel"
+  #   streaming:           true/false (overrides global use_streaming)
+  #   description:         human-readable description
+  #   license:             dataset license (e.g. "CC-BY-4.0", "MIT", "research_only")
+  #   script:              writing script ("bengali" | "meitei_mayek" | "latin" | "devanagari")
+  #   domain:              data domain ("news" | "wiki" | "literature" | "government" | "general")
+  #   priority:            dataset processing priority ("high" | "medium" | "low")
+  #   download_method:     how data is fetched ("stream_hf" | "download_local")
+  #   processing_pipeline: processing pipeline name ("standard_cleaning")
+  # ─────────────────────────────────────────────────────────
+  sources:
+    flores:
+      provider: huggingface
+      repo: openlanguagedata/flores_plus
+      subset: mni_Beng
+      split: dev
+      type: translation
+      streaming: true
+      license: CC-BY-SA-4.0
+      script: bengali
+      domain: wiki
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        FLORES+ benchmark for Manipuri (Bengali script).
+        Successor to facebook/flores, actively maintained
+        by Open Language Data Initiative.
+
+    manipuri_corpus:
+      provider: huggingface
+      repo: joyson117/manipuri-monolingual-corpus
+      subset: set1
+      split: set1
+      type: monolingual
+      streaming: true
+      license: research_only
+      script: bengali
+      domain: news
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        Manipuri monolingual corpus (~11M words in set1).
+        Gated — requires HF token and accepted terms.
+
+    indiccorp:
+      provider: huggingface
+      repo: ai4bharat/IndicCorpV2
+      subset: mni
+      split: train
+      type: monolingual
+      streaming: true
+      license: CC-BY-4.0
+      script: bengali
+      domain: news
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        AI4Bharat IndicCorp V2 large-scale monolingual
+        corpus for Manipuri.
+
+    local_test:
+      provider: local
+      local_path: data/local_test.jsonl
+      split: train
+      type: translation
+      streaming: false
+      license: MIT
+      script: latin
+      domain: general
+      priority: low
+      download_method: download_local
+      processing_pipeline: standard_cleaning
+
+    dayananda_meitei_mayek_sample:
+      provider: huggingface
+      repo: DayanandaThokchom/meitei_mayek_sample
+      subset: default
+      split: train
+      type: monolingual
+      streaming: true
+      license: CC-BY-4.0
+      script: meitei_mayek
+      domain: general
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        Clean Meitei Mayek sample corpus curated by Dayananda Thokchom
+        for Manipuri NLP and tokenization research.
+
+    dayananda_meitei_to_english:
+      provider: huggingface
+      repo: DayanandaThokchom/meitei-mayek-to-english
+      subset: default
+      split: train
+      type: parallel
+      streaming: true
+      license: CC-BY-4.0
+      script: meitei_mayek
+      domain: general
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        Parallel corpus aligning Meitei Lon (in canonical Meitei Mayek script)
+        with English by Dayananda Thokchom.
+
+    dayananda_english_to_meitei:
+      provider: huggingface
+      repo: DayanandaThokchom/english-TO-meitei-mayek
+      subset: default
+      split: train
+      type: parallel
+      streaming: true
+      license: CC-BY-4.0
+      script: meitei_mayek
+      domain: general
+      priority: high
+      download_method: stream_hf
+      processing_pipeline: standard_cleaning
+      description: >
+        Parallel corpus aligning English with Meitei Mayek script by Dayananda Thokchom.
+

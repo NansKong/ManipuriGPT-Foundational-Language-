@@ -1,0 +1,52 @@
+# ManipuriGPT Training Configurations (Phase 5)
+# Supports declarative execution across full FT, LoRA, QLoRA, DPO, ORPO, Continued Pretraining, and SFT.
+
+defaults:
+  model_name: "smollm_135m"
+  backend: "transformers"
+  precision: "bf16"
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  max_seq_length: 2048
+  learning_rate: 0.0002
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  output_dir: "artifacts/models/checkpoints"
+  logging_steps: 10
+  eval_steps: 250
+  save_steps: 250
+  seed: 42
+
+modes:
+  qlora:
+    use_qlora_4bit: true
+    lora_r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+    backend: "peft"
+  
+  lora:
+    use_qlora_4bit: false
+    lora_r: 16
+    lora_alpha: 32
+    lora_dropout: 0.05
+    backend: "peft"
+  
+  dpo:
+    dpo_beta: 0.1
+    backend: "trl"
+    learning_rate: 0.00005
+  
+  orpo:
+    orpo_beta: 0.1
+    backend: "trl"
+    learning_rate: 0.00005
+  
+  continued_pretraining:
+    backend: "transformers"
+    learning_rate: 0.0001
+    max_seq_length: 4096
+  
+  sft:
+    backend: "transformers"
+    learning_rate: 0.0002

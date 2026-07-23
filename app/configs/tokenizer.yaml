@@ -1,0 +1,68 @@
+tokenizer:
+  # === Inference/Fine-Tuning Tokenizer (HF pretrained model) ===
+  model: "Qwen/Qwen2.5-3B-Instruct"
+  max_length: 2048
+  padding: "longest"
+  truncation: true
+  packing: true
+  add_special_tokens: true
+  chat_template: "auto"
+  output_dir: "cache/tokenized"
+
+  # === Custom SentencePiece Training Configuration ===
+  training:
+    # Primary algorithm: SentencePiece Unigram (best for agglutinative Manipuri)
+    primary_algorithm: "sentencepiece_unigram"
+    # Comparison algorithm: SentencePiece BPE
+    comparison_algorithm: "sentencepiece_bpe"
+
+    # Vocabulary sizes to benchmark (corpus ~3M chars / ~858K tokens)
+    # Testing 5 vocab sizes: 8k, 12k, 16k, 24k, 32k. For low-resource languages, 12k often outperforms 32k.
+    vocab_sizes: [8192, 12288, 16384, 24576, 32768]
+
+    # Character coverage: 1.0 for Manipuri
+    # Meitei Mayek has a small Unicode block (U+ABC0-U+ABFF, U+AAE0-U+AAFF).
+    # Unlike Japanese/Chinese (tens of thousands of characters), dropping rare Manipuri symbols is unnecessary.
+    character_coverage: 1.0
+
+    # SentencePiece training controls
+    input_sentence_size: 1000000    # Max sentences to sample for training (prevents OOM)
+    shuffle_input_sentence: true     # Shuffle before subsampling
+    num_threads: 4
+    max_sentencepiece_length: 32     # Max subword piece length in bytes
+    split_digits: true               # Treat each digit as separate token (cleaner number handling)
+    byte_fallback: true              # Use byte-level fallback for unknown chars (robustness)
+    compute_stability: false         # Set true (or pass --compute-stability) to run multi-seed stability evaluation across 5 random seeds
+    train_extremely_large_corpus: false
+
+    # Special tokens — model-control only, NO ordinary Manipuri/Bengali letters
+    # SentencePiece owns <unk>(id=0), <s>(id=1), </s>(id=2) via reserved IDs.
+    # Only non-reserved tokens go into user_defined_symbols.
+    special_tokens:
+      - "<unk>"           # id=0 (SentencePiece reserved: unk_id)
+      - "<s>"             # id=1 (SentencePiece reserved: bos_id)
+      - "</s>"            # id=2 (SentencePiece reserved: eos_id)
+      - "<pad>"           # id=3 (pad_id)
+      - "<|im_start|>"    # ChatML conversation boundary
+      - "<|im_end|>"      # ChatML conversation boundary
+      - "<system>"        # System role marker
+      - "<user>"          # User role marker
+      - "<assistant>"     # Assistant role marker
+      - "<tool>"          # Tool call marker
+      - "<function>"      # Function call marker
+      - "<observation>"   # Tool observation result marker
+      - "<think>"         # Internal reasoning/thought marker
+      - "<code>"          # Code block marker
+      - "<math>"          # Math block marker
+      - "<sep>"           # Generic separator
+
+    # Evaluation thresholds for automated winner selection
+    evaluation:
+      max_acceptable_fertility: 3.5       # tokens per word (lower is better)
+      max_acceptable_unknown_rate: 0.005  # 0.5% (lower is better)
+      min_compression_ratio: 3.0          # bytes per token (higher is better)
+      min_round_trip_accuracy: 0.95       # exact decode match (higher is better)
+
+    # Output directories
+    output_base_dir: "cache/tokenizers"
+    hf_export_dir: "cache/tokenizers/hf_fast"

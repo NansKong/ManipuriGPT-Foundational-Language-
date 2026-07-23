@@ -1,0 +1,60 @@
+preprocessing:
+  unicode:
+    enabled: true
+    form: NFC
+    normalize_punctuation: true
+    normalize_quotes: true
+    remove_zero_width: true
+    remove_control_chars: true
+
+  cleaning:
+    enabled: true
+    remove_html: true
+    remove_xml: true
+    remove_markdown: true
+    remove_urls: true
+    remove_emails: true
+    normalize_whitespace: true
+
+  script_detection:
+    enabled: true
+    target_script: "any"
+
+  language_detection:
+    enabled: true
+    detector_type: "langdetect"
+    target_language: "any"
+    min_confidence: 0.5
+    fasttext_model_path: "models/lid.176.ftz"
+
+  validation:
+    enabled: true
+    reject_empty: true
+    reject_only_punctuation: true
+    reject_only_numbers: true
+    reject_corrupted_unicode: true
+    max_repeated_chars: 4
+
+  filtering:
+    enabled: true
+    min_length: 3
+    max_length: 512
+    length_unit: "characters"
+
+  deduplication:
+    enabled: true
+    exact: true
+    normalized: true
+    fuzzy: true
+    fuzzy_threshold: 90.0
+
+  splitting:
+    enabled: true
+    train: 0.90
+    validation: 0.05
+    test: 0.05
+
+  export:
+    format: "arrow"
+    output_dir: "cache/processed"
+    version: "v1"
