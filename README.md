@@ -17,14 +17,28 @@ The project follows the vision described in [Proposal.pdf](Proposal.pdf): suppor
 
 The repository currently contains modular Python components for:
 
-- Dataset registration, loading, validation, caching, and translation/chat dataset construction.
-- Streaming corpus acquisition and balanced sampling.
-- Preprocessing: language and script detection, cleaning, Unicode normalization, PII removal, deduplication, quality scoring, chunking, splitting, and export.
-- Tokenizer training, candidate evaluation, versioning, formatting, packing, and Hugging Face conversion.
-- Configuration-driven training backends and modes including full fine-tuning, LoRA, QLoRA, SFT, DPO, ORPO, and continued pretraining.
-- Evaluation, inference validation, experiment tracking, and model export.
+- Evaluated candidate tokenizers and frozen standard `tokenizer.model` (`v1`, 0.00% `<unk>` rate).
+- Production master corpus scaling engine (`run_phase55.py`) with cross-version deduplication and non-overwriting release snapshots (`ManipuriGPT-Corpus-v1`, `ManipuriGPT-Corpus-v2`, `ManipuriGPT-Corpus-v3`).
+- Specialized OCR artifact cleaning, companion JSON sidecar metadata mapping, and Latin noise density filtering for scanned PDF data (`d_drive_manipuri_corpus_processed`).
+- Decoupled EM-Suite utilities: `EMFastTextEngine` (post-processing utility for semantic lookup and OCR candidate ranking) and `EMAlbertEvaluator` (evaluation/benchmarking layer).
 
-The proposal also includes future work such as a production FastAPI service, retrieval-augmented generation (RAG), OCR resources, a web demo, CI/CD, public benchmarks, and public model/data releases. Treat these as roadmap items unless their implementation is added to the repository.
+## Release Snapshots & Corpus Build Results
+
+| Release Snapshot | Status | Total Sequences | Total Tokens | `<unk>` Token Rate | Key Sources Included |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **ManipuriGPT-Corpus-v1** | Baseline | 143,891 | ~2,844,564 | **0.0000%** | Local processed PDFs, Dayananda Meitei Mayek |
+| **ManipuriGPT-Corpus-v2** | Scaled | Expanded | Scaled | **0.0000%** | `v1` + Sangraha, EMA Lon, Joyson Parallel |
+| **ManipuriGPT-Corpus-v3** | **Latest Release** | **4,065 (new)** | **738,068** | **0.0000%** | `v1` + `v2` + `joyson_monolingual` + `D:/manipuri corpus/processed` |
+
+### Detailed `v3` Corpus Expansion Metrics
+
+- **New Unique Sequences Added**: 4,065
+- **Total Tokens**: 738,068 tokens (0.00% unknown token rate)
+- **Cross-Version Duplicates Removed**: 2,754,516 (99.62% duplicate rate eliminated against `v1` & `v2`)
+- **Scanned OCR Lines Filtered**: 1,145 garbled lines pruned via regex page marker cleaner & Latin density threshold (>35% Latin char density)
+- **Script Distribution**: 64.4% Meitei Mayek, 26.3% Bengali Script, 7.4% Latin, 1.9% Mixed
+
+---
 
 ## Architecture
 
@@ -129,6 +143,18 @@ python -m app.scripts.preprocess_shards `
 ```
 
 Add `--resume` to continue from the output manifest after an interruption.
+
+### Execute Master Corpus Scaling & Snapshot Build (Phase 5.5)
+
+Run the master scaling pipeline with cross-version deduplication (`v1` and `v2`) to produce standard Parquet shards and `manifest.json`:
+
+```powershell
+python -m app.scripts.run_phase55 `
+  --output-dir artifacts/datasets/ManipuriGPT-Corpus-v3 `
+  --v1-dir artifacts/datasets/ManipuriGPT-Corpus-v1 `
+  --v2-dir artifacts/datasets/ManipuriGPT-Corpus-v2 `
+  --skip-freeze
+```
 
 ### Train tokenizer candidates
 

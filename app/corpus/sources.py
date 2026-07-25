@@ -275,6 +275,19 @@ SOURCE_REGISTRY: Dict[str, CorpusSourceSpec] = {
         metadata_columns=["English"],
         description="PIB-PMI parallel corpus (497K sentences) — English ↔ Manipuri by Joyson."
     ),
+    "joyson_monolingual": CorpusSourceSpec(
+        name="joyson_monolingual",
+        source_type="hf",
+        dataset_path="joyson117/manipuri-monolingual-corpus",
+        subset="set1",
+        split="set1",
+        supported_languages=["mni"],
+        caching_strategy="local_cache",
+        default_text_column="text",
+        metadata_columns=["source", "category", "script"],
+        description="Manipuri monolingual corpus (~11M words) by Joyson Thokchom."
+    ),
+
 
     # ---------------------------------------------------------------
     # Phase 5.5 — Local file sources for master corpus scaling
@@ -292,6 +305,20 @@ SOURCE_REGISTRY: Dict[str, CorpusSourceSpec] = {
         license="To be determined",
         extra_configs={"format": "jsonl"},
     ),
+    "d_drive_manipuri_corpus_processed": CorpusSourceSpec(
+        name="d_drive_manipuri_corpus_processed",
+        source_type="local",
+        dataset_path="D:/manipuri corpus/processed",
+        split="train",
+        supported_languages=["mni", "en"],
+        caching_strategy="local_cache",
+        default_text_column="text",
+        metadata_columns=["category", "source", "script", "quality", "ocr_confidence"],
+        description="OCR'd Manipuri PDFs from D:/manipuri corpus/processed (M001-M025).",
+        license="To be determined",
+        extra_configs={"format": "jsonl"},
+    ),
+
     "local_ema_lon_mono": CorpusSourceSpec(
         name="local_ema_lon_mono",
         source_type="local",

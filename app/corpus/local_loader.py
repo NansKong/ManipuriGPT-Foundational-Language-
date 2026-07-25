@@ -23,12 +23,36 @@ from app.utils.logger import logger
 # ---------------------------------------------------------------------------
 # Per-source provenance configuration
 # ---------------------------------------------------------------------------
+# Standard canonical category mapping helper
+CANONICAL_CATEGORIES = {
+    "grammar": ["grammar", "grammar_book", "linguistics"],
+    "textbook": ["textbook", "school_textbook", "curriculum", "education"],
+    "dictionary": ["dictionary", "dict", "glossary", "lexicon"],
+    "story": ["story", "stories", "children_story", "folktale"],
+    "government": ["government", "official", "gazette", "pib", "pmi"],
+    "news": ["news", "newspaper", "journalism", "article"],
+    "literature": ["literature", "ema_lon", "classical", "poetry"],
+    "books": ["book", "books", "novel", "prose"],
+}
+
+
+def normalize_category(raw_cat: str, default: str = "literature") -> str:
+    """Normalizes raw category strings to canonical domain tags."""
+    if not raw_cat or raw_cat == "unknown":
+        return default
+    cat_lower = raw_cat.lower().strip()
+    for canon, keywords in CANONICAL_CATEGORIES.items():
+        if any(kw in cat_lower for kw in keywords):
+            return canon
+    return default
+
+
 LOCAL_SOURCE_CONFIGS: Dict[str, Dict[str, Any]] = {
     "local_processed_pdfs": {
-        "description": "OCR'd Manipuri PDFs from Bharatavani / CIIL",
+        "description": "OCR'd Manipuri PDFs (Books, Textbooks, Dictionaries, Literature)",
         "license": "To be determined",
         "year": 2024,
-        "default_category": "mixed",
+        "default_category": "books",
         "ocr_confidence_min": 50.0,
         "quality_min": 65.0,
     },
@@ -36,37 +60,46 @@ LOCAL_SOURCE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "description": "EMA Lon monolingual Manipuri corpus",
         "license": "CC BY-NC 4.0",
         "year": 2024,
-        "default_category": "monolingual_literature",
+        "default_category": "literature",
     },
     "local_ema_lon_parallel": {
         "description": "EMA Lon bilingual Manipuri-English corpus",
         "license": "CC BY-NC 4.0",
         "year": 2024,
-        "default_category": "parallel_corpus",
+        "default_category": "literature",
     },
     "local_sangraha_cached": {
         "description": "AI4Bharat Sangraha Manipuri (local HF cache)",
         "license": "CC BY 4.0",
         "year": 2024,
-        "default_category": "web_crawled",
+        "default_category": "news",
     },
     "local_dayananda_meitei": {
         "description": "Dayananda Thokchom Meitei Mayek sample (local cache)",
         "license": "Various",
         "year": 2024,
-        "default_category": "monolingual_meitei_mayek",
+        "default_category": "literature",
     },
     "local_dayananda_eng_to_meitei": {
         "description": "Dayananda Thokchom English-to-Meitei Mayek (local cache)",
         "license": "Various",
         "year": 2024,
-        "default_category": "parallel_corpus",
+        "default_category": "textbook",
     },
     "local_joyson_parallel": {
         "description": "Joyson English-Manipuri parallel corpus (local cache)",
         "license": "Various",
         "year": 2024,
-        "default_category": "parallel_corpus",
+        "default_category": "government",
+    },
+    "d_drive_manipuri_corpus_processed": {
+        "description": "Manipuri Corpus (Books, Dictionaries, Literature, Textbooks from D:/manipuri corpus)",
+        "license": "To be determined",
+        "year": 2024,
+        "default_category": "literature",
+        "ocr_confidence_min": 40.0,
+        "quality_min": 50.0,
+        "metadata_dir": "D:/manipuri corpus/metadata",
     },
 }
 
@@ -93,6 +126,32 @@ class LocalCorpusLoader:
         self.text_column = spec.default_text_column
         self.dataset_path = spec.dataset_path
         self.yielded = 0
+        self._doc_metadata_cache: Dict[str, Dict[str, Any]] = {}
+
+    def _load_sidecar_metadata(self, doc_key: str) -> Dict[str, Any]:
+        """Loads companion document metadata from sidecar JSON files if present."""
+        if doc_key in self._doc_metadata_cache:
+            return self._doc_metadata_cache[doc_key]
+
+        meta_dir = self.source_cfg.get("metadata_dir")
+        if not meta_dir or not os.path.isdir(meta_dir):
+            self._doc_metadata_cache[doc_key] = {}
+            return {}
+
+        meta_path = os.path.join(meta_dir, f"{doc_key}.json")
+        if not os.path.isfile(meta_path):
+            self._doc_metadata_cache[doc_key] = {}
+            return {}
+
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self._doc_metadata_cache[doc_key] = data
+                return data
+        except Exception as e:
+            logger.debug(f"LocalCorpusLoader: Error reading sidecar metadata {meta_path}: {e}")
+            self._doc_metadata_cache[doc_key] = {}
+            return {}
 
     def stream(self) -> Iterator[Dict[str, Any]]:
         """Main entry point — dispatches to format-specific reader."""
@@ -144,6 +203,9 @@ class LocalCorpusLoader:
 
         for fp in filepaths:
             fname = os.path.basename(fp)
+            doc_key = fname.split('.')[0]
+            sidecar_meta = self._load_sidecar_metadata(doc_key)
+
             with open(fp, "r", encoding="utf-8") as fh:
                 for line_no, line in enumerate(fh, 1):
                     line = line.strip()
@@ -159,8 +221,8 @@ class LocalCorpusLoader:
                         continue
 
                     # OCR quality gate
-                    ocr_conf = rec.get("ocr_confidence")
-                    quality = rec.get("quality")
+                    ocr_conf = rec.get("ocr_confidence", sidecar_meta.get("avg_ocr_confidence"))
+                    quality = rec.get("quality", sidecar_meta.get("avg_quality_score"))
                     if ocr_conf is not None and ocr_conf < ocr_conf_min:
                         skipped_quality += 1
                         continue
@@ -168,24 +230,31 @@ class LocalCorpusLoader:
                         skipped_quality += 1
                         continue
 
+                    category_raw = rec.get("category") or sidecar_meta.get("category")
+                    script_raw = rec.get("script") or sidecar_meta.get("actual_script") or sidecar_meta.get("script") or "unknown"
+                    license_raw = rec.get("license") or sidecar_meta.get("license") or self.source_cfg.get("license", "Various")
+
                     metadata = {
                         "source": self.spec.name,
-                        "source_dataset": rec.get("source", self.source_cfg.get("description", self.spec.name)),
-                        "category": rec.get("category", self.source_cfg.get("default_category", "unknown")),
-                        "script": rec.get("script", "unknown"),
-                        "license": rec.get("license", self.source_cfg.get("license", "Various")),
-                        "year": self.source_cfg.get("year", 2024),
-                        "language": rec.get("language", "mni"),
+                        "source_dataset": rec.get("source") or sidecar_meta.get("source") or self.source_cfg.get("description", self.spec.name),
+                        "category": normalize_category(category_raw, self.source_cfg.get("default_category", "literature")),
+                        "script": script_raw,
+                        "license": license_raw,
+                        "year": sidecar_meta.get("year", self.source_cfg.get("year", 2024)),
+                        "language": rec.get("language") or sidecar_meta.get("actual_language") or "mni",
                         "document_id": rec.get("id", f"{fname}_{line_no}"),
                         "quality_score": float(quality) / 100.0 if quality else 1.0,
-                        "ocr_engine": rec.get("ocr_engine"),
-                        "original_source": rec.get("source", "unknown"),
+                        "ocr_engine": rec.get("ocr_engine") or sidecar_meta.get("processing_method"),
+                        "original_source": rec.get("source") or sidecar_meta.get("source") or "unknown",
+                        "title": sidecar_meta.get("title"),
+                        "author": sidecar_meta.get("author"),
                     }
 
                     self.yielded += 1
                     yield {"text": text, "metadata": metadata}
 
         if skipped_quality:
+
             logger.info(
                 f"LocalCorpusLoader: Skipped {skipped_quality} JSONL records "
                 f"below quality/OCR threshold (ocr_conf>={ocr_conf_min}, quality>={quality_min})"

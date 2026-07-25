@@ -29,11 +29,15 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
 from app.utils.logger import logger
+from app.corpus.sources import get_source_spec
+from app.corpus.streamer import CorpusStreamer
+
 
 
 # All local sources to ingest (Phase 5.5)
 PHASE55_LOCAL_SOURCES = [
     "local_processed_pdfs",
+    "d_drive_manipuri_corpus_processed",
     "local_ema_lon_mono",
     "local_ema_lon_parallel",
     "local_sangraha_cached",
@@ -48,7 +52,9 @@ PHASE55_HF_SOURCES = [
     "dayananda_english_to_meitei",
     "joyson_bible",
     "joyson_pib_pmi",
+    "joyson_monolingual",
 ]
+
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -58,8 +64,8 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="artifacts/datasets/ManipuriGPT-Corpus-v2",
-        help="Directory where v2 training dataset shards will be saved",
+        default="artifacts/datasets/ManipuriGPT-Corpus-v3",
+        help="Directory where v3 training dataset shards will be saved",
     )
     parser.add_argument(
         "--v1-dir",
@@ -67,6 +73,13 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         default="artifacts/datasets/ManipuriGPT-Corpus-v1",
         help="Existing v1 corpus directory (for cross-dedup seed)",
     )
+    parser.add_argument(
+        "--v2-dir",
+        type=str,
+        default="artifacts/datasets/ManipuriGPT-Corpus-v2",
+        help="Existing v2 corpus directory (for cross-dedup seed)",
+    )
+
     parser.add_argument(
         "--tokenizer-path",
         type=str,
@@ -212,18 +225,23 @@ def main(args_list: Optional[List[str]] = None) -> int:
         logger.info(f"[Step 0] Using existing tokenizer: {frozen_model_path}")
 
     # ---------------------------------------------------------------
-    # Step 1: Load v1 hashes for cross-dedup
+    # Step 1: Load prior corpus hashes (v1 & v2) for cross-dedup
     # ---------------------------------------------------------------
     if not args.skip_v1_dedup:
-        logger.info("\n[Step 1] Loading v1 corpus hashes for cross-deduplication...")
+        logger.info("\n[Step 1] Loading prior corpus hashes (v1 & v2) for cross-deduplication...")
         v1_hashes = _load_v1_hashes(args.v1_dir)
+        v2_hashes = _load_v1_hashes(args.v2_dir)
+        seen_hashes = set(v1_hashes) | set(v2_hashes)
+        logger.info(f"Loaded {len(seen_hashes):,} prior unique hashes for cross-dedup.")
     else:
-        v1_hashes = set()
-        logger.info("\n[Step 1] Skipping v1 cross-dedup (--skip-v1-dedup set).")
+        seen_hashes = set()
+        logger.info("\n[Step 1] Skipping prior cross-dedup (--skip-v1-dedup set).")
+
 
     # ---------------------------------------------------------------
     # Step 2: Stream all sources through the pipeline
     # ---------------------------------------------------------------
+
     logger.info("\n[Step 2] Streaming & processing ALL sources through the pipeline...")
 
     from app.preprocessing.normalizer import UnicodeNormalizer
@@ -515,10 +533,27 @@ def main(args_list: Optional[List[str]] = None) -> int:
         json.dump(report, f, indent=2, ensure_ascii=False)
     logger.info(f"  → Saved corpus report: {report_path}")
 
-    # Manifest
+    # Top-level Release Corpus Manifest (manifest.json)
+    release_manifest_path = os.path.join(args.output_dir, "manifest.json")
+    dataset_basename = os.path.basename(os.path.normpath(args.output_dir))
+    release_manifest = {
+        "name": dataset_basename,
+        "pipeline": "5.5",
+        "records": len(clean_rows),
+        "tokens": total_tokens,
+        "sources": list(source_stats.keys()),
+        "tokenizer": "SentencePiece-v1" if frozen_model_path else "estimated",
+        "created": datetime.utcnow().strftime("%Y-%m-%d"),
+        "license": "Mixed"
+    }
+    with open(release_manifest_path, "w", encoding="utf-8") as f:
+        json.dump(release_manifest, f, indent=2)
+    logger.info(f"  → Saved release manifest: {release_manifest_path}")
+
+    # Detailed Metadata Manifest
     manifest_path = os.path.join(meta_dir, "manifest.json")
     manifest = {
-        "dataset_name": "ManipuriGPT-Corpus-v2",
+        "dataset_name": dataset_basename,
         "pipeline_version": "5.5",
         "created_at": datetime.utcnow().isoformat() + "Z",
         "seed": args.seed,
@@ -532,7 +567,8 @@ def main(args_list: Optional[List[str]] = None) -> int:
     }
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
-    logger.info(f"  → Saved manifest: {manifest_path}")
+    logger.info(f"  → Saved metadata manifest: {manifest_path}")
+
 
     # Dataset Card (README.md)
     card_path = os.path.join(args.output_dir, "README.md")

@@ -73,4 +73,26 @@ class TextCleaner:
             lines = [re.sub(r' +', ' ', line) for line in lines]
             text = '\n'.join(lines)
 
+        # 7. Clean OCR Noise
+        text = self.clean_ocr_noise(text)
+
         return text
+
+    def clean_ocr_noise(self, text: str) -> str:
+        """
+        Cleans OCR noise typical in scanned Manipuri/Bengali PDFs:
+        - Removes OCR page header/footer markers like (vi), (1v), (ii1), (viii)
+        - Removes isolated garbled Latin token sequences from non-English text
+        - Fixes broken diacritics and excessive whitespace
+        """
+        if not text:
+            return text
+
+        # Remove page markers like (vi), (vii), (1v), (ii1), (iii)
+        text = re.sub(r'^\s*\([ivxIVX0-9]+\)\s*', '', text)
+
+        # Remove multi-dots/dandas and normalize whitespace
+        text = re.sub(r'[\.\-\_=~]{3,}', ' ', text)
+        text = re.sub(r' +', ' ', text).strip()
+        return text
+

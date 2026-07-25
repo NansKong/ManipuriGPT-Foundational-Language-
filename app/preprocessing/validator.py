@@ -58,4 +58,13 @@ class SentenceValidator:
             if re.search(pattern, text):
                 return False
 
+        # 6. Reject heavily corrupted OCR lines (mixing >35% Latin noise with Indic text)
+        latin_char_count = len(re.findall(r'[a-zA-Z]', text))
+        indic_char_count = len(re.findall(r'[\u0980-\u09FF\uABC0-\uABFF]', text))
+        total_len = len(text)
+        if total_len > 0 and indic_char_count > 0:
+            if (latin_char_count / total_len) > 0.35:
+                return False
+
         return True
+
