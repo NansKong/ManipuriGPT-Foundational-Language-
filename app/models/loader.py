@@ -149,6 +149,8 @@ class ModelLoader:
                 if current_vocab != vocab_size:
                     logger.info(f"ModelLoader: Resizing model token embeddings ({current_vocab} -> {vocab_size})...")
                     model.resize_token_embeddings(vocab_size)
+                    if hasattr(model, "tie_weights"):
+                        model.tie_weights()
 
             if self.config.gradient_checkpointing and hasattr(model, "gradient_checkpointing_enable"):
                 logger.info("ModelLoader: Enabling gradient checkpointing...")
