@@ -40,24 +40,28 @@ Thumbs.db
 desktop.ini
 
 # Local data, downloads, and temporary processing state
-cache/
-data/
-datasets/
-logs/
-tmp/
-temp/
+/cache/
+/data/
+/datasets/
+/logs/
+/tmp/
+/temp/
 *.log
 *.parquet
 *.jsonl
 *.arrow
 
 # ML training/checkpoint state and large model files
-models/
-checkpoints/
-runs/
-wandb/
-mlruns/
-lightning_logs/
+/models/
+/checkpoints/
+/runs/
+/wandb/
+/mlruns/
+/lightning_logs/
+
+# Ensure application source packages are always tracked
+!app/models/
+!app/datasets/
 *.ckpt
 *.pt
 *.pth
