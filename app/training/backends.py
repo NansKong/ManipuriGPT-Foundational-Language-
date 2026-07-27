@@ -145,8 +145,7 @@ class TRLBackendWrapper(BaseBackendWrapper):
                 fp16=(self.config.precision == "fp16"),
                 bf16=(self.config.precision == "bf16"),
                 logging_steps=self.config.logging_steps,
-                save_steps=self.config.save_steps,
-                output_dir=self.config.output_dir
+                save_steps=self.config.save_steps
             )
             trainer = SFTTrainer(
                 model=model,
