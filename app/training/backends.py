@@ -40,8 +40,13 @@ class TransformersBackendWrapper(BaseBackendWrapper):
         try:
             from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling
 
+            tok_obj = tokenizer if not hasattr(tokenizer, "tokenizer") else tokenizer.tokenizer
+            if hasattr(tok_obj, "pad_token") and tok_obj.pad_token is None:
+                tok_obj.pad_token = tok_obj.eos_token
+                tok_obj.pad_token_id = tok_obj.eos_token_id
+
             collator = DataCollatorForLanguageModeling(
-                tokenizer=tokenizer if not hasattr(tokenizer, "tokenizer") else tokenizer.tokenizer,
+                tokenizer=tok_obj,
                 mlm=False
             )
 

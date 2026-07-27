@@ -74,7 +74,6 @@ class DatasetProcessor:
                 padding=False,
                 return_attention_mask=True
             )
-            tokenized["labels"] = [ids.copy() for ids in tokenized["input_ids"]]
             return tokenized
 
         # Remove non-tensor columns to save memory
