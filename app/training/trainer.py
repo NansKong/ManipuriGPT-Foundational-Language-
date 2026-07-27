@@ -78,7 +78,21 @@ class ManipuriTrainer:
         
         if hasattr(self.backend_trainer, "train"):
             if self.config.resume_from_checkpoint:
-                logger.info(f"ManipuriTrainer: Resuming training from checkpoint '{self.config.resume_from_checkpoint}'")
+                import os
+                checkpoint_path = str(self.config.resume_from_checkpoint)
+                logger.info(f"ManipuriTrainer: Resuming training from checkpoint '{checkpoint_path}'")
+                
+                # CPU / BF16 TPU Safeguard: When fp16 is disabled, accelerator.scaler is None.
+                # If checkpoint contains GPU FP16 scaler.pt, backup scaler.pt so Trainer doesn't crash.
+                if self.config.precision != "fp16" and os.path.isdir(checkpoint_path):
+                    scaler_file = os.path.join(checkpoint_path, "scaler.pt")
+                    if os.path.isfile(scaler_file):
+                        try:
+                            os.rename(scaler_file, os.path.join(checkpoint_path, "scaler.pt.bak"))
+                            logger.info("ManipuriTrainer: Automatically backed up FP16 scaler.pt -> scaler.pt.bak for CPU/BF16 compatibility.")
+                        except Exception as e:
+                            logger.warning(f"ManipuriTrainer: Could not rename scaler.pt ({e})")
+
                 results = self.backend_trainer.train(resume_from_checkpoint=self.config.resume_from_checkpoint)
             else:
                 results = self.backend_trainer.train()
