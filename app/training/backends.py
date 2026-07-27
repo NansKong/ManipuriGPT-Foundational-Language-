@@ -73,14 +73,25 @@ class TransformersBackendWrapper(BaseBackendWrapper):
                 report_to="none"
             )
 
-            trainer = Trainer(
-                model=model,
-                args=training_args,
-                train_dataset=train_dataset,
-                eval_dataset=eval_dataset,
-                data_collator=collator,
-                tokenizer=tokenizer if not hasattr(tokenizer, "tokenizer") else tokenizer.tokenizer
-            )
+            tok_obj = tokenizer if not hasattr(tokenizer, "tokenizer") else tokenizer.tokenizer
+            try:
+                trainer = Trainer(
+                    model=model,
+                    args=training_args,
+                    train_dataset=train_dataset,
+                    eval_dataset=eval_dataset,
+                    data_collator=collator,
+                    processing_class=tok_obj
+                )
+            except TypeError:
+                trainer = Trainer(
+                    model=model,
+                    args=training_args,
+                    train_dataset=train_dataset,
+                    eval_dataset=eval_dataset,
+                    data_collator=collator,
+                    tokenizer=tok_obj
+                )
             logger.info("TransformersBackendWrapper: Real Hugging Face Trainer initialized.")
             return trainer
 
@@ -147,15 +158,27 @@ class TRLBackendWrapper(BaseBackendWrapper):
                 logging_steps=self.config.logging_steps,
                 save_steps=self.config.save_steps
             )
-            trainer = SFTTrainer(
-                model=model,
-                args=training_args,
-                train_dataset=train_dataset,
-                eval_dataset=eval_dataset,
-                dataset_text_field="text",
-                max_seq_length=self.config.max_seq_length,
-                tokenizer=tokenizer
-            )
+            tok_obj = tokenizer if not hasattr(tokenizer, "tokenizer") else tokenizer.tokenizer
+            try:
+                trainer = SFTTrainer(
+                    model=model,
+                    args=training_args,
+                    train_dataset=train_dataset,
+                    eval_dataset=eval_dataset,
+                    dataset_text_field="text",
+                    max_seq_length=self.config.max_seq_length,
+                    processing_class=tok_obj
+                )
+            except TypeError:
+                trainer = SFTTrainer(
+                    model=model,
+                    args=training_args,
+                    train_dataset=train_dataset,
+                    eval_dataset=eval_dataset,
+                    dataset_text_field="text",
+                    max_seq_length=self.config.max_seq_length,
+                    tokenizer=tok_obj
+                )
             logger.info("TRLBackendWrapper: TRL SFTTrainer initialized.")
             return trainer
         except Exception as e:
