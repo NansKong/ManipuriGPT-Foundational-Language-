@@ -36,8 +36,21 @@ class ModelLoader:
         """
         import torch
 
+        # TPU Detection (Google Colab TPU v5e-1 / PyTorch XLA)
+        is_tpu = False
+        try:
+            import torch_xla.core.xla_model as xm
+            is_tpu = True
+            logger.info("ModelLoader: Detected TPU hardware (PyTorch XLA). Auto-selected precision: bf16")
+        except ImportError:
+            is_tpu = False
+
+        if is_tpu:
+            self.config.precision = "bf16"
+            return torch.bfloat16, "bf16"
+
         if not torch.cuda.is_available():
-            logger.info("ModelLoader: CUDA unavailable. Selected precision: fp32 (CPU)")
+            logger.info("ModelLoader: CUDA & TPU unavailable. Selected precision: fp32 (CPU)")
             self.config.precision = "fp32"
             return torch.float32, "fp32"
 
