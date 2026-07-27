@@ -19,7 +19,7 @@ class DatasetLoader:
     def __init__(self, config: TrainingConfig):
         self.config = config
 
-    def load((self) -> Any:
+    def load(self) -> Any:
         """
         Loads dataset specified by config.dataset_name_or_path.
         Supports remote HF Hub datasets, local packed Parquet shards, and local files.
