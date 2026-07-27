@@ -54,9 +54,9 @@ class TrainingConfig:
     output_dir: str = "artifacts/models/checkpoints"
     resume_from_checkpoint: Optional[Union[str, bool]] = None
     save_total_limit: int = 3
-    save_steps: int = 250
+    save_steps: int = 500
     save_strategy: str = "steps"
-    eval_steps: int = 250
+    eval_steps: int = 500
     eval_strategy: str = "steps"
     logging_steps: int = 10
     logging_strategy: str = "steps"

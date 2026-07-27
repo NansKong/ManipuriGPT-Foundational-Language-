@@ -20,35 +20,62 @@ class ModelLoader:
 
     def select_torch_dtype(self) -> Tuple[Any, str]:
         """
-        Automatically selects the optimal torch dtype and precision string based on GPU hardware.
-        Defaults Tesla T4 (Colab free tier) to fp16, Ampere/Ada/Hopper to bf16, and CPU to fp32.
+        Determines the effective training precision AND the model-loading dtype.
+
+        IMPORTANT: When training precision is fp16, the model must be loaded in FP32.
+        PyTorch AMP's GradScaler requires FP32 master weights — it handles FP16 casting
+        during autocast forward/backward passes internally. Loading the model directly
+        in FP16 causes 'Attempting to unscale FP16 gradients' because GradScaler cannot
+        unscale gradients that are already in FP16.
+
+        For bf16: direct loading is safe because bf16 training does NOT use GradScaler
+        (bf16 has sufficient dynamic range).
+
+        Returns:
+            (model_loading_dtype, effective_precision_string)
         """
         import torch
 
         if not torch.cuda.is_available():
             logger.info("ModelLoader: CUDA unavailable. Selected precision: fp32 (CPU)")
+            self.config.precision = "fp32"
             return torch.float32, "fp32"
 
         device_name = torch.cuda.get_device_name(0)
         logger.info(f"ModelLoader: Detected GPU hardware -> '{device_name}'")
 
-        # Explicit precision override from config if user explicitly set non-default
-        if self.config.precision == "fp16":
-            return torch.float16, "fp16"
-        elif self.config.precision == "bf16" and torch.cuda.is_bf16_supported():
-            return torch.bfloat16, "bf16"
+        # Resolve effective precision from explicit config or hardware auto-detection
+        effective_precision = self.config.precision
+        if effective_precision in ("auto", "fp16"):
+            # Auto-detect or explicit fp16 for Tesla T4 / V100 / consumer GPUs
+            effective_precision = "fp16"
+        elif effective_precision == "bf16" and torch.cuda.is_bf16_supported():
+            effective_precision = "bf16"
+        elif effective_precision not in ("fp16", "bf16", "fp32"):
+            # Hardware-aware auto selection
+            if "T4" in device_name or "V100" in device_name or "1080" in device_name or "2080" in device_name:
+                effective_precision = "fp16"
+            elif torch.cuda.is_bf16_supported():
+                effective_precision = "bf16"
+            else:
+                effective_precision = "fp16"
 
-        # Hardware-aware auto selection:
-        # Tesla T4, GTX 1080/2080, V100 do not support fast native BF16
-        if "T4" in device_name or "V100" in device_name or "1080" in device_name or "2080" in device_name:
-            logger.info("ModelLoader: Hardware lacks fast native BF16 support (Tesla T4/V100). Auto-selected precision: fp16")
-            return torch.float16, "fp16"
-        elif torch.cuda.is_bf16_supported():
-            logger.info("ModelLoader: Ampere/Ada/Hopper GPU detected with BF16 support. Auto-selected precision: bf16")
+        # Propagate resolved precision back to config so backends.py picks it up
+        self.config.precision = effective_precision
+
+        # Determine model loading dtype:
+        # - fp16 training → load in FP32 (AMP GradScaler handles FP16 casting)
+        # - bf16 training → load in BF16 directly (no GradScaler)
+        # - fp32 training → load in FP32
+        if effective_precision == "fp16":
+            logger.info("ModelLoader: Training precision: fp16. Loading model in FP32 (AMP GradScaler will handle FP16 casting).")
+            return torch.float32, "fp16"
+        elif effective_precision == "bf16":
+            logger.info("ModelLoader: Training precision: bf16. Loading model in BF16 directly.")
             return torch.bfloat16, "bf16"
         else:
-            logger.info("ModelLoader: Defaulting GPU precision to fp16")
-            return torch.float16, "fp16"
+            logger.info("ModelLoader: Training precision: fp32.")
+            return torch.float32, "fp32"
 
     def load(self) -> Tuple[Any, Any]:
         """

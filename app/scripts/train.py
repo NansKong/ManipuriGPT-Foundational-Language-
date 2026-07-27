@@ -48,7 +48,9 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--max-steps", type=int, default=None, help="Max training steps (set to e.g. 20 for smoke test validation)")
     
     # Checkpointing & Strategy
-    parser.add_argument("--output-dir", type=str, default="artifacts/models/checkpoints", help="Output directory for saved checkpoints")
+    parser.add_argument("--output-dir", type=str, default="artifacts/models/checkpoints", help="Output directory for saved checkpoints (e.g. /content/drive/MyDrive/ManipuriGPT/checkpoints)")
+    parser.add_argument("--save-steps", type=int, default=500, help="Save a checkpoint every N training steps")
+    parser.add_argument("--save-total-limit", type=int, default=3, help="Maximum number of checkpoints to keep (oldest are deleted)")
     parser.add_argument("--resume-from-checkpoint", type=str, default=None, help="Checkpoint directory path to resume training from")
     
     # Hugging Face Hub Integration
@@ -87,6 +89,8 @@ def main(args: Optional[List[str]] = None) -> int:
         max_seq_length=parsed.max_seq_len,
         max_steps=parsed.max_steps,
         output_dir=parsed.output_dir,
+        save_steps=parsed.save_steps,
+        save_total_limit=parsed.save_total_limit,
         resume_from_checkpoint=parsed.resume_from_checkpoint,
         push_to_hub=parsed.push_to_hub,
         hub_model_id=parsed.hub_model_id,
