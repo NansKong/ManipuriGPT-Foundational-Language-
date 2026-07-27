@@ -77,7 +77,11 @@ class ManipuriTrainer:
         )
         
         if hasattr(self.backend_trainer, "train"):
-            results = self.backend_trainer.train()
+            if self.config.resume_from_checkpoint:
+                logger.info(f"ManipuriTrainer: Resuming training from checkpoint '{self.config.resume_from_checkpoint}'")
+                results = self.backend_trainer.train(resume_from_checkpoint=self.config.resume_from_checkpoint)
+            else:
+                results = self.backend_trainer.train()
         else:
             results = {"status": "completed", "global_step": self.config.max_steps or 0}
 
