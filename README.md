@@ -1,8 +1,8 @@
 # ManipuriGPT
 
-**ManipuriGPT** is an open, research-grade, reproducible foundation model ecosystem for the **Manipuri (Meiteilon)** language. It is designed to develop a Manipuri-aware language technology pipeline—from corpus engineering, multi-script tokenization, and continued pretraining to comprehensive evaluation, instruction tuning, and deployment.
+**ManipuriGPT** is an open, reproducible research project for building language technology for Manipuri (Meiteilon). It is designed to develop a Manipuri-aware foundation-model ecosystem—from documented corpus engineering, multi-script processing, tokenizer research, continued pretraining, instruction tuning, and evaluation to model export and public release.
 
-The project supports Manipuri across its primary writing systems: **Meitei Mayek** (native Unicode standard), **Bengali Script** (historical literary texts), and **Romanized / Latin Manipuri** (informal communication).
+The project follows the vision described in [Proposal.pdf](Proposal.pdf): support Manipuri across **Meitei Mayek** (native Unicode standard), **Bengali Script** (historical literary texts), and **Romanized / Latin Manipuri** (informal communication), while keeping data sources, processing, and experiments reproducible.
 
 ---
 
@@ -16,11 +16,29 @@ The project supports Manipuri across its primary writing systems: **Meitei Mayek
 
 ---
 
-## Phase 7 — Pretraining & Evaluation Metrics
+## Project Goals
 
-ManipuriGPT has completed Phase 7 (Foundation Model Evaluation) across 13.5k pretraining steps.
+- Build a licensed, reproducible Manipuri corpus from streaming and local sources.
+- Normalize, clean, deduplicate, validate, and shard corpus data across Meitei Mayek, Bengali script, and Latin.
+- Train and evaluate Manipuri-aware tokenizers with zero unknown (`<unk>`) token emissions.
+- Support language-adaptive continued pretraining and instruction tuning with LoRA/QLoRA on SmolLM architectures.
+- Conduct rigorous evaluation across perplexity, script consistency, multi-sampling generation, translation, QA, and reasoning.
+- Export trained checkpoints for Hugging Face, GGUF, and ONNX use.
 
-### Pretraining Diagnostics Summary
+---
+
+## Repository Capabilities
+
+- **Evaluated Tokenizers**: Evaluated candidate tokenizers and frozen standard `tokenizer.model` (0.00% `<unk>` rate).
+- **Master Corpus Scaling Engine (`run_phase55.py`)**: Cross-version deduplication and non-overwriting release snapshots (`ManipuriGPT-Corpus-v1`, `v2`, `v3`).
+- **OCR Artifact Cleaning**: Specialized OCR cleaning, companion JSON sidecar metadata mapping, and Latin noise density filtering for scanned PDF archives (`d:/manipuri corpus`).
+- **Phase 7 Evaluation Suite (`run_phase7_eval.py`)**: 10-step automated evaluation engine profiling training loss curves, script-wise perplexity, multi-sampling decoding diversity, script consistency, memorization, and inference throughput.
+
+---
+
+## Phase 7 — Pretraining & Evaluation Results
+
+ManipuriGPT has completed Phase 7 foundation model pretraining and evaluation across 13.5k steps (3.0 Epochs).
 
 | Metric | Value | Notes / Status |
 | :--- | :--- | :--- |
@@ -50,8 +68,6 @@ ManipuriGPT-135M-Base-v1.0  (Immutable Base Foundation Model Release)
 
 ## Quickstart Python Usage
 
-### Load Pretrained Base Model with `transformers`
-
 ```python
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -72,7 +88,33 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
 ---
 
-## Repository Layout & Modular Components
+## Architecture
+
+```text
+Configured data sources
+        |
+        v
+Corpus ingestion / streaming
+        |
+        v
+Cleaning -> normalization -> script detection -> deduplication -> validation
+        |
+        v
+Sharded unified corpus
+        |
+        +--> Tokenizer training and evaluation
+        |
+        +--> Continued pretraining / instruction tuning
+                       |
+                       v
+                 Evaluation and export
+```
+
+Dataset sources and processing metadata live in `app/configs/datasets.yaml`; runtime behavior is intended to be changed through configuration rather than hard-coded URLs.
+
+---
+
+## Repository Layout
 
 ```text
 app/
@@ -109,37 +151,75 @@ Proposal.pdf        Project proposal and architectural roadmap
 
 ---
 
+## Setup
+
+Requires Python 3.10 or newer. Create an isolated environment, then install dependencies:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+
+# Core development and tests
+pip install -r requirements/dev.txt
+
+# Corpus, tokenizer, training, and evaluation workflows
+pip install -r requirements/training.txt
+```
+
+---
+
 ## Common Workflows & CLI Entry Points
 
-### 1. Run Complete Phase 7 Evaluation Suite
+Run commands from the repository root.
+
+### 1. Ingest a corpus sample
+
+```powershell
+python -m app.scripts.ingest --source wikipedia --limit 1000
+```
+
+### 2. Execute Master Corpus Scaling & Snapshot Build
+
+```powershell
+python -m app.scripts.run_phase55 `
+  --output-dir artifacts/datasets/ManipuriGPT-Corpus-v3 `
+  --v1-dir artifacts/datasets/ManipuriGPT-Corpus-v1 `
+  --v2-dir artifacts/datasets/ManipuriGPT-Corpus-v2 `
+  --skip-freeze
+```
+
+### 3. Run Complete Phase 7 Evaluation Suite
 
 ```powershell
 python -m app.scripts.run_phase7_eval --all
 ```
 
-Or execute individual diagnostic steps:
+Or run individual diagnostic steps:
 ```powershell
-# Training Loss Curves & Report
-python -m app.scripts.run_phase7_eval --step 7.1
-
-# Script-wise Perplexity
-python -m app.scripts.run_phase7_eval --step 7.2
-
-# Inference Speed Profiling
-python -m app.scripts.run_phase7_eval --step 7.8
+python -m app.scripts.run_phase7_eval --step 7.1   # Training Loss Curves & Report
+python -m app.scripts.run_phase7_eval --step 7.2   # Script-wise Perplexity
+python -m app.scripts.run_phase7_eval --step 7.8   # Inference Speed Profiling
 ```
 
-### 2. Freeze Base Foundation Release
+### 4. Freeze Base Foundation Release
 
 ```powershell
 python -m app.scripts.freeze_base_model_v10 --source-dir models/smollm_135m_pretrained --target-dir models/ManipuriGPT-135M-Base-v1.0
 ```
 
-### 3. Publish Base Model to Hugging Face Hub
+### 5. Publish Model / Tokenizer to Hugging Face Hub
 
 ```powershell
 python -m app.exports.hf_publisher --model-dir models/ManipuriGPT-135M-Base-v1.0 --model-repo-id nanskong/ManipuriGPT-135M-Base-v1.0 --publish-model
 ```
+
+---
+
+## Detailed Documentation & Dataset Citations
+
+For comprehensive technical history, pretraining step diagnostics, dataset catalog breakdown, and complete BibTeX citations, see:
+* **[docs/PROJECT_HISTORY_AND_CITATIONS.md](docs/PROJECT_HISTORY_AND_CITATIONS.md)**
 
 ---
 
