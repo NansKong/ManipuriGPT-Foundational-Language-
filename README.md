@@ -2,7 +2,7 @@
 
 **ManipuriGPT** is an open, reproducible research project for building language technology for Manipuri (Meiteilon). It is designed to develop a Manipuri-aware foundation-model ecosystem—from documented corpus engineering, multi-script processing, tokenizer research, continued pretraining, instruction tuning, and evaluation to model export and public release.
 
-The project follows the vision described in [Proposal.pdf](Proposal.pdf): support Manipuri across **Meitei Mayek** (native Unicode standard), **Bengali Script** (historical literary texts), and **Romanized / Latin Manipuri** (informal communication), while keeping data sources, processing, and experiments reproducible.
+The project supports Manipuri across **Meitei Mayek** (native Unicode standard), **Bengali Script** (historical literary texts), and **Romanized / Latin Manipuri** (informal communication), while keeping data sources, processing, and experiments reproducible.
 
 ---
 
@@ -146,7 +146,6 @@ app/
                       └── export.py                 (Export & Hugging Face publisher)
 docs/               Project documentation and phase design specs
 evaluation/         Phase 7 evaluation artifacts, reports, and plots
-Proposal.pdf        Project proposal and architectural roadmap
 ```
 
 ---
