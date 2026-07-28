@@ -54,7 +54,7 @@ class TransformersBackendWrapper(BaseBackendWrapper):
                 output_dir=self.config.output_dir,
                 learning_rate=self.config.learning_rate,
                 weight_decay=self.config.weight_decay,
-                warmup_ratio=self.config.warmup_ratio,
+                warmup_steps=int(self.config.warmup_ratio * (self.config.max_steps or 1000)) if self.config.warmup_ratio else 100,
                 lr_scheduler_type=self.config.lr_scheduler_type,
                 per_device_train_batch_size=self.config.batch_size,
                 gradient_accumulation_steps=self.config.gradient_accumulation_steps,
