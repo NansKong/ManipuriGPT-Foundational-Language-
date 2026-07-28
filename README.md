@@ -1,231 +1,164 @@
 # ManipuriGPT
 
-**ManipuriGPT** is an open, reproducible research project for building language technology for Manipuri (Meiteilon). It is designed to develop a Manipuri-aware foundation-model ecosystem—not just a chatbot—through a documented corpus, multi-script processing, tokenizer research, continued pretraining, instruction tuning, and evaluation.
+**ManipuriGPT** is an open, research-grade, reproducible foundation model ecosystem for the **Manipuri (Meiteilon)** language. It is designed to develop a Manipuri-aware language technology pipeline—from corpus engineering, multi-script tokenization, and continued pretraining to comprehensive evaluation, instruction tuning, and deployment.
 
-The project follows the vision described in [Proposal.pdf](Proposal.pdf): support Manipuri across **Meitei Mayek**, **Romanized Manipuri**, and **Bengali-script Manipuri**, while keeping data sources, processing, and experiments reproducible.
-
-## Project goals
-
-- Build a licensed, reproducible Manipuri corpus from streaming and local sources.
-- Normalize, clean, deduplicate, validate, and shard corpus data.
-- Train and evaluate Manipuri-aware tokenizers.
-- Support language-adaptive continued pretraining and instruction tuning with LoRA/QLoRA.
-- Evaluate translation, chat, question answering, and reasoning workloads.
-- Export trained checkpoints for Hugging Face, GGUF, and ONNX use.
-
-## Current repository capabilities
-
-The repository currently contains modular Python components for:
-
-- Evaluated candidate tokenizers and frozen standard `tokenizer.model` (`v1`, 0.00% `<unk>` rate).
-- Production master corpus scaling engine (`run_phase55.py`) with cross-version deduplication and non-overwriting release snapshots (`ManipuriGPT-Corpus-v1`, `ManipuriGPT-Corpus-v2`, `ManipuriGPT-Corpus-v3`).
-- Specialized OCR artifact cleaning, companion JSON sidecar metadata mapping, and Latin noise density filtering for scanned PDF data (`d_drive_manipuri_corpus_processed`).
-- Decoupled EM-Suite utilities: `EMFastTextEngine` (post-processing utility for semantic lookup and OCR candidate ranking) and `EMAlbertEvaluator` (evaluation/benchmarking layer).
-
-## Release Snapshots & Corpus Build Results
-
-| Release Snapshot | Status | Total Sequences | Total Tokens | `<unk>` Token Rate | Key Sources Included |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **ManipuriGPT-Corpus-v1** | Baseline | 143,891 | ~2,844,564 | **0.0000%** | Local processed PDFs, Dayananda Meitei Mayek |
-| **ManipuriGPT-Corpus-v2** | Scaled | Expanded | Scaled | **0.0000%** | `v1` + Sangraha, EMA Lon, Joyson Parallel |
-| **ManipuriGPT-Corpus-v3** | **Latest Release** | **4,065 (new)** | **738,068** | **0.0000%** | `v1` + `v2` + `joyson_monolingual` + `D:/manipuri corpus/processed` |
-
-### Detailed `v3` Corpus Expansion Metrics
-
-- **New Unique Sequences Added**: 4,065
-- **Total Tokens**: 738,068 tokens (0.00% unknown token rate)
-- **Cross-Version Duplicates Removed**: 2,754,516 (99.62% duplicate rate eliminated against `v1` & `v2`)
-- **Scanned OCR Lines Filtered**: 1,145 garbled lines pruned via regex page marker cleaner & Latin density threshold (>35% Latin char density)
-- **Script Distribution**: 64.4% Meitei Mayek, 26.3% Bengali Script, 7.4% Latin, 1.9% Mixed
+The project supports Manipuri across its primary writing systems: **Meitei Mayek** (native Unicode standard), **Bengali Script** (historical literary texts), and **Romanized / Latin Manipuri** (informal communication).
 
 ---
 
-## Architecture
+## Official Hugging Face Releases
+
+| Resource | Type | Hugging Face Repository | Description |
+| :--- | :--- | :--- | :--- |
+| **`ManipuriGPT-Corpus-v1.0`** | Dataset | [nanskong/ManipuriGPT-Corpus-v1.0](https://huggingface.co/datasets/nanskong/ManipuriGPT-Corpus-v1.0) | Research-grade, deduplicated, quality-scored multi-script Manipuri corpus |
+| **`ManipuriGPT-Tokenizer-v1.0`** | Tokenizer | [nanskong/ManipuriGPT-Tokenizer-v1](https://huggingface.co/nanskong/ManipuriGPT-Tokenizer-v1) | 8,000 vocab SentencePiece BPE tokenizer with 0% `<unk>` error rate |
+| **`ManipuriGPT-135M-Base-v1.0`** | **Base Model** | [nanskong/ManipuriGPT-135M-Base-v1.0](https://huggingface.co/nanskong/ManipuriGPT-135M-Base-v1.0) | **Official Pretrained Foundation Model** (SmolLM-135M base, 13.5k steps) |
+
+---
+
+## Phase 7 — Pretraining & Evaluation Metrics
+
+ManipuriGPT has completed Phase 7 (Foundation Model Evaluation) across 13.5k pretraining steps.
+
+### Pretraining Diagnostics Summary
+
+| Metric | Value | Notes / Status |
+| :--- | :--- | :--- |
+| **Pretraining Epochs** | **3.0 Epochs** (13,596 steps) | Full corpus coverage |
+| **Final Train Loss** | `3.6246` | Smooth cross-entropy convergence |
+| **Final Eval Loss** | `4.2799` | Best eval loss: `4.2693` |
+| **Meitei Mayek PPL** | **`133.14`** | Strong language representation on native script |
+| **Bengali Script PPL** | `1508.89` | Script-switching representation |
+| **Tokenizer `<unk>` Rate** | **0.0000%** | Zero unknown tokens emitted |
+| **Compression Ratio** | `7.125 bytes/token` | Highly efficient subword compression |
+| **Generation Diversity** | Distinct-1: `0.8683` \| Distinct-2: `0.9849` | Self-BLEU: `4.22` (High output variety) |
+
+---
+
+## Model Lineage & Hierarchy
 
 ```text
-Configured data sources
-        |
-        v
-Corpus ingestion / streaming
-        |
-        v
-Cleaning -> normalization -> script detection -> deduplication -> validation
-        |
-        v
-Sharded unified corpus
-        |
-        +--> Tokenizer training and evaluation
-        |
-        +--> Continued pretraining / instruction tuning
-                       |
-                       v
-                 Evaluation and export
+ManipuriGPT-135M-Base-v1.0  (Immutable Base Foundation Model Release)
+        │
+        ├── ManipuriGPT-135M-SFT-v1.0   (Phase 8: Instruction Fine-Tuning)
+        ├── ManipuriGPT-135M-SFT-v2.0   (Multi-Task & Reasoning Tuning)
+        ├── ManipuriGPT-135M-DPO-v1.0   (Direct Preference Optimization)
+        └── ManipuriGPT-135M-Chat-v1.0  (Conversational Assistant)
 ```
 
-Dataset sources and processing metadata live in `app/configs/datasets.yaml`; runtime behavior is intended to be changed through configuration rather than hard-coded URLs.
+---
 
-## Repository layout
+## Quickstart Python Usage
+
+### Load Pretrained Base Model with `transformers`
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model_id = "nanskong/ManipuriGPT-135M-Base-v1.0"
+
+# Load model and tokenizer from Hugging Face Hub
+tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True)
+
+# Generate Manipuri text continuation
+prompt = "ꯑꯩ"
+inputs = tokenizer(prompt, return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=64, do_sample=True, top_k=50, temperature=0.7)
+
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+---
+
+## Repository Layout & Modular Components
 
 ```text
 app/
   configs/          YAML configuration and loading helpers
-  corpus/           source registry, acquisition, streaming, and sampling
-  datasets/         dataset registry, loading, validation, and builders
-  preprocessing/    corpus cleaning and transformation pipeline
-  tokenization/     tokenizer training, evaluation, and versioning
-  tokenizer/        runtime tokenizer utilities and dataset preparation
-  training/         training configuration, backends, callbacks, and trainer
-  evaluation/       metrics and evaluation suite
-  inference/        inference engine and validation helpers
-  exports/          Hugging Face, GGUF, and ONNX exporters
-  scripts/          command-line workflow entry points
-docs/               project documentation and phase notes
-requirements/       dependency groups
-Proposal.pdf        project proposal and roadmap
+  corpus/           Source registry, acquisition, streaming, and sampling
+  datasets/         Dataset registry, loading, validation, and builders
+  preprocessing/    Corpus cleaning and transformation pipeline
+  tokenization/     Tokenizer training, evaluation, and versioning
+  training/         Training backends, Tesla T4 FP16 auto-selection, and Trainer
+  evaluation/       Phase 7 multi-perspective evaluation suite:
+                      ├── training_analyzer.py      (Loss curves & training_report.md)
+                      ├── perplexity_eval.py        (Script-wise PPL: Meitei/Bengali)
+                      ├── token_inspector.py        (Next-token probability distributions)
+                      ├── generator_eval.py         (Multi-sampling decoding & diversity)
+                      ├── script_eval.py            (Script consistency & Unicode health)
+                      ├── memorization_eval.py      (Verbatim memorization check)
+                      ├── benchmark_runner.py       (Task benchmarks: Translation, OCR)
+                      ├── speed_benchmark.py        (Tokens/sec, latency & VRAM)
+                      ├── tokenizer_eval.py         (Tokenizer health diagnostics)
+                      ├── checkpoint_compare.py     (Multi-checkpoint scorecards)
+                      ├── human.py                  (Offline human_review.md generator)
+                      └── report_generator.py       (Final final_eval_report.md)
+  exports/          HF, GGUF, ONNX exporters and HFPublisher engine
+  scripts/          CLI entry points:
+                      ├── run_phase55.py            (Master corpus scaling CLI)
+                      ├── freeze_corpus_v10.py       (Corpus snapshot freezer)
+                      ├── freeze_base_model_v10.py   (Base model release freezer)
+                      ├── run_phase7_eval.py        (Master Phase 7 evaluation CLI)
+                      └── export.py                 (Export & Hugging Face publisher)
+docs/               Project documentation and phase design specs
+evaluation/         Phase 7 evaluation artifacts, reports, and plots
+Proposal.pdf        Project proposal and architectural roadmap
 ```
 
-## Setup
+---
 
-Requires Python 3.10 or newer. Create an isolated environment, then install the dependencies appropriate for the work you plan to do.
+## Common Workflows & CLI Entry Points
+
+### 1. Run Complete Phase 7 Evaluation Suite
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-
-# Core development and tests
-pip install -r requirements/dev.txt
-
-# Corpus, tokenizer, training, and evaluation workflows
-pip install -r requirements/training.txt
-
-# Optional FastAPI serving dependencies
-pip install -r requirements/api.txt
+python -m app.scripts.run_phase7_eval --all
 ```
 
-Copy the example environment file if a workflow requires local configuration or credentials:
+Or execute individual diagnostic steps:
+```powershell
+# Training Loss Curves & Report
+python -m app.scripts.run_phase7_eval --step 7.1
+
+# Script-wise Perplexity
+python -m app.scripts.run_phase7_eval --step 7.2
+
+# Inference Speed Profiling
+python -m app.scripts.run_phase7_eval --step 7.8
+```
+
+### 2. Freeze Base Foundation Release
 
 ```powershell
-Copy-Item .env.example .env
+python -m app.scripts.freeze_base_model_v10 --source-dir models/smollm_135m_pretrained --target-dir models/ManipuriGPT-135M-Base-v1.0
 ```
 
-Never commit `.env`, downloaded corpora, caches, checkpoints, or model exports. They are intentionally excluded by `.gitignore`.
-
-## Configuration and data access
-
-Review `app/configs/datasets.yaml` before acquiring data. Each source describes its provider, split, script, domain, license, priority, download method, and processing pipeline.
-
-Some configured Hugging Face sources are gated or require accepted terms. Authenticate only with a personal access token that has the minimum necessary **read** permission; place it in your local environment configuration, never in source code or Git.
-
-The pipeline defaults to streaming where possible. Respect each dataset's licence, terms, and redistribution restrictions before training on or publishing derived data.
-
-## Common workflows
-
-Run commands from the repository root.
-
-### Ingest a small corpus sample
+### 3. Publish Base Model to Hugging Face Hub
 
 ```powershell
-python -m app.scripts.ingest --source wikipedia --limit 1000
+python -m app.exports.hf_publisher --model-dir models/ManipuriGPT-135M-Base-v1.0 --model-repo-id nanskong/ManipuriGPT-135M-Base-v1.0 --publish-model
 ```
 
-Use `--no-mock` to require a live source instead of allowing the development fallback.
+---
 
-### Preprocess and shard a corpus
+## Citation & Academic Use
 
-```powershell
-python -m app.scripts.preprocess_shards `
-  --sources dayananda_meitei_mayek_sample dayananda_english_to_meitei `
-  --limit 5000 `
-  --shard-size 1000 `
-  --format parquet `
-  --output-dir artifacts/datasets/phase52
+If you use ManipuriGPT models, tokenizers, or datasets in your research, please cite:
+
+```bibtex
+@misc{manipurigpt_base_v10,
+  author       = {ManipuriGPT Team},
+  title        = {ManipuriGPT-135M-Base-v1.0: Research-Grade Open Foundation Model for Manipuri},
+  year         = {2026},
+  publisher    = {Hugging Face},
+  url          = {https://huggingface.co/nanskong/ManipuriGPT-135M-Base-v1.0}
+}
 ```
 
-Add `--resume` to continue from the output manifest after an interruption.
+---
 
-### Execute Master Corpus Scaling & Snapshot Build (Phase 5.5)
+## License
 
-Run the master scaling pipeline with cross-version deduplication (`v1` and `v2`) to produce standard Parquet shards and `manifest.json`:
-
-```powershell
-python -m app.scripts.run_phase55 `
-  --output-dir artifacts/datasets/ManipuriGPT-Corpus-v3 `
-  --v1-dir artifacts/datasets/ManipuriGPT-Corpus-v1 `
-  --v2-dir artifacts/datasets/ManipuriGPT-Corpus-v2 `
-  --skip-freeze
-```
-
-### Train tokenizer candidates
-
-```powershell
-python -m app.scripts.train_tokenizers `
-  --train-samples 5000 `
-  --evaluate `
-  --convert-hf `
-  --tier v0-experimental
-```
-
-Candidate tokenizer settings—including algorithms and vocabulary sizes—are in `app/configs/tokenizer.yaml`.
-
-### Validate a training configuration
-
-Start with a dry run before initiating a costly training job:
-
-```powershell
-python -m app.scripts.train `
-  --model smollm_135m `
-  --mode qlora `
-  --backend peft `
-  --epochs 3 `
-  --dry-run
-```
-
-Training defaults are defined in `app/configs/training.yaml`. Choose hardware-appropriate precision and batch size; the proposal targets both a constrained local GPU and cloud notebook environments.
-
-### Evaluate and export
-
-```powershell
-python -m app.scripts.evaluate --model smollm_135m --task translation
-
-python -m app.scripts.export `
-  --checkpoint artifacts/models/checkpoints `
-  --model smollm_135m `
-  --targets hf gguf onnx
-```
-
-Exports are simulated by the current CLI implementation; validate an exported artifact before publishing it.
-
-## Quality checks
-
-Run the test suite locally:
-
-```powershell
-pytest
-```
-
-Useful focused runs:
-
-```powershell
-pytest tests/preprocessing
-pytest tests/tokenizer
-pytest -m "not slow"
-```
-
-Test files are intentionally ignored by this repository's current Git policy, but they remain available locally for validation.
-
-## Reproducibility principles
-
-- Use YAML configuration for sources and experiment settings.
-- Record dataset licences, source metadata, and preprocessing decisions.
-- Keep generated data, cache files, checkpoints, and binary exports outside version control.
-- Preserve manifests, metrics, and configuration snapshots with each experiment.
-- Do not publish models or datasets without verifying licensing, data provenance, and evaluation results.
-
-## Roadmap
-
-The proposal organizes the work around corpus research and ingestion, preprocessing, tokenizer research, language-adaptive pretraining, instruction fine-tuning, evaluation, RAG, and public release. See [docs/phases.md](docs/phases.md) and [Proposal.pdf](Proposal.pdf) for the detailed plan.
-
-## Contributing
-
-Contributions should be modular, configuration-driven, reproducible, and accompanied by local validation. Do not add secrets, raw restricted datasets, caches, checkpoints, or large model binaries to commits.
+This repository and model weights are released under the [Apache 2.0 License](LICENSE).

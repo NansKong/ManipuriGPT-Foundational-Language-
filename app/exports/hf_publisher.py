@@ -420,6 +420,91 @@ print(decoded)
                 logger.error(f"HFPublisher: Failed to publish tokenizer ({e})")
             return {"status": "error", "error": err_msg, "repo_id": repo_id}
 
+    def publish_model(
+        self,
+        model_dir: str,
+        repo_id: str = "nanskong/ManipuriGPT-135M-Base-v1.0",
+        private: bool = False,
+        token: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Publishes model directory (containing config.json, model.safetensors, tokenizer.json, README.md)
+        to Hugging Face Hub as a model repository.
+        """
+        logger.info(f"HFPublisher: Preparing to publish model from '{model_dir}' to '{repo_id}'...")
+
+        if not os.path.isdir(model_dir):
+            raise FileNotFoundError(f"Model directory not found: {model_dir}")
+
+        hub_token = token or os.environ.get("HF_TOKEN")
+        try:
+            from huggingface_hub import HfApi, get_token
+            import time
+
+            if not hub_token:
+                hub_token = get_token()
+
+            if not hub_token:
+                logger.warning("No Hugging Face token found. Run `hf auth login` or set `HF_TOKEN` environment variable.")
+                return {
+                    "status": "requires_auth",
+                    "repo_id": repo_id,
+                    "message": "Token missing. Please log in via `hf auth login` or set HF_TOKEN."
+                }
+
+            api = HfApi(token=hub_token)
+            try:
+                user_info = api.whoami()
+                username = user_info.get("name", "unknown")
+                logger.info(f"HFPublisher: Authenticated as '{username}'")
+            except Exception:
+                username = None
+
+            max_retries = 3
+            last_err = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info(f"HFPublisher: Attempt {attempt}/{max_retries} — Creating/verifying model repo '{repo_id}'...")
+                    api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
+
+                    logger.info(f"HFPublisher: Uploading model weights and config from '{model_dir}' to '{repo_id}'...")
+                    api.upload_folder(
+                        folder_path=model_dir,
+                        repo_id=repo_id,
+                        repo_type="model",
+                        commit_message="Release ManipuriGPT-135M-Base-v1.0 foundation model weights and config"
+                    )
+                    logger.info(f"HFPublisher: Successfully published base model to https://huggingface.co/{repo_id}")
+                    return {
+                        "status": "success",
+                        "repo_id": repo_id,
+                        "url": f"https://huggingface.co/{repo_id}",
+                        "model_dir": model_dir
+                    }
+                except Exception as net_err:
+                    last_err = net_err
+                    err_str = str(net_err)
+                    if "403" in err_str or "Forbidden" in err_str:
+                        raise net_err
+                    elif "getaddrinfo failed" in err_str or "11001" in err_str:
+                        logger.warning(f"HFPublisher: Attempt {attempt}/{max_retries} — DNS/Network error. Retrying in 5 seconds...")
+                        if attempt < max_retries:
+                            time.sleep(5)
+                    else:
+                        raise net_err
+
+            if last_err:
+                raise last_err
+
+        except Exception as e:
+            err_msg = str(e)
+            if "403" in err_msg or "Forbidden" in err_msg:
+                logger.error(f"HFPublisher: 403 Forbidden. Your token may lack write access to namespace '{repo_id.split('/')[0]}'.")
+                logger.error("Fix: run with --model-repo-id <YOUR_HF_USERNAME>/ManipuriGPT-135M-Base-v1.0")
+            else:
+                logger.error(f"HFPublisher: Failed to publish model ({e})")
+            return {"status": "error", "error": err_msg, "repo_id": repo_id}
+
     def publish_dataset(
         self,
         dataset_dir: str,
@@ -554,6 +639,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tokenizer-repo-id", type=str, default="nanskong/ManipuriGPT-Tokenizer-v1", help="Hugging Face tokenizer model repository ID")
     parser.add_argument("--publish-tokenizer", action="store_true", help="Publish tokenizer to Hugging Face Hub as a model repo")
 
+    # Base Model arguments
+    parser.add_argument("--model-dir", type=str, default="models/ManipuriGPT-135M-Base-v1.0", help="Path to base model directory")
+    parser.add_argument("--model-repo-id", type=str, default="nanskong/ManipuriGPT-135M-Base-v1.0", help="Hugging Face base model repository ID")
+    parser.add_argument("--publish-model", action="store_true", help="Publish base foundation model weights and config to Hugging Face Hub")
+
     # Common
     parser.add_argument("--private", action="store_true", help="Create private HF repository")
     return parser.parse_args()
@@ -568,23 +658,24 @@ def main() -> int:
     logger.info("=" * 70)
 
     # --- Dataset Card Generation ---
-    logger.info("Generating/Updating HF README.md and CITATION.cff for dataset...")
-    manifest_p = os.path.join(args.dataset_dir, "manifest.json")
-    manifest = {}
-    if os.path.exists(manifest_p):
-        with open(manifest_p, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
+    if os.path.exists(args.dataset_dir):
+        logger.info("Generating/Updating HF README.md and CITATION.cff for dataset...")
+        manifest_p = os.path.join(args.dataset_dir, "manifest.json")
+        manifest = {}
+        if os.path.exists(manifest_p):
+            with open(manifest_p, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
 
-    audit_p = os.path.join(args.dataset_dir, "corpus_audit_report.json")
-    audit = None
-    if os.path.exists(audit_p):
-        with open(audit_p, "r", encoding="utf-8") as f:
-            audit = json.load(f)
+        audit_p = os.path.join(args.dataset_dir, "corpus_audit_report.json")
+        audit = None
+        if os.path.exists(audit_p):
+            with open(audit_p, "r", encoding="utf-8") as f:
+                audit = json.load(f)
 
-    readme_path = publisher.generate_readme(args.dataset_dir, manifest, audit)
-    cff_path = publisher.generate_citation_cff(args.dataset_dir, version=manifest.get("version", "1.0.0"))
-    logger.info(f"Generated Dataset README.md : {readme_path}")
-    logger.info(f"Generated CITATION.cff      : {cff_path}")
+        readme_path = publisher.generate_readme(args.dataset_dir, manifest, audit)
+        cff_path = publisher.generate_citation_cff(args.dataset_dir, version=manifest.get("version", "1.0.0"))
+        logger.info(f"Generated Dataset README.md : {readme_path}")
+        logger.info(f"Generated CITATION.cff      : {cff_path}")
 
     # --- Tokenizer Card Generation ---
     if os.path.isdir(args.tokenizer_dir):
@@ -614,6 +705,18 @@ def main() -> int:
             logger.warning(f"Tokenizer publication pending authentication: {res.get('message')}")
         else:
             logger.error(f"Tokenizer publication failed: {res.get('error')}")
+
+    # --- Model Publishing ---
+    if args.publish_model:
+        logger.info("-" * 70)
+        logger.info(f"Publishing base model weights to '{args.model_repo_id}'...")
+        res = publisher.publish_model(args.model_dir, repo_id=args.model_repo_id, private=args.private)
+        if res.get("status") == "success":
+            logger.info(f"Model published successfully! URL: {res.get('url')}")
+        elif res.get("status") == "requires_auth":
+            logger.warning(f"Model publication pending authentication: {res.get('message')}")
+        else:
+            logger.error(f"Model publication failed: {res.get('error')}")
 
     logger.info("=" * 70)
     return 0
