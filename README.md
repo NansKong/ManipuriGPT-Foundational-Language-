@@ -31,7 +31,7 @@ The project supports Manipuri across **Meitei Mayek** (native Unicode standard),
 
 - **Evaluated Tokenizers**: Evaluated candidate tokenizers and frozen standard `tokenizer.model` (0.00% `<unk>` rate).
 - **Master Corpus Scaling Engine (`run_phase55.py`)**: Cross-version deduplication and non-overwriting release snapshots (`ManipuriGPT-Corpus-v1`, `v2`, `v3`).
-- **OCR Artifact Cleaning**: Specialized OCR cleaning, companion JSON sidecar metadata mapping, and Latin noise density filtering for scanned PDF archives (`d:/manipuri corpus`).
+- **OCR Artifact Cleaning**: Specialized OCR cleaning, companion JSON sidecar metadata mapping, and Latin noise density filtering for scanned PDF archives from the **Manipuri Corpus & OCR Pipeline**.
 - **Phase 7 Evaluation Suite (`run_phase7_eval.py`)**: 10-step automated evaluation engine profiling training loss curves, script-wise perplexity, multi-sampling decoding diversity, script consistency, memorization, and inference throughput.
 
 ---
@@ -50,6 +50,57 @@ ManipuriGPT has completed Phase 7 foundation model pretraining and evaluation ac
 | **Tokenizer `<unk>` Rate** | **0.0000%** | Zero unknown tokens emitted |
 | **Compression Ratio** | `7.125 bytes/token` | Highly efficient subword compression |
 | **Generation Diversity** | Distinct-1: `0.8683` \| Distinct-2: `0.9849` | Self-BLEU: `4.22` (High output variety) |
+
+---
+
+## Manipuri Corpus & OCR Pipeline Manifest
+
+The foundation model pretraining pipeline incorporates digitized Manipuri books, dictionaries, grammars, and educational materials extracted via the [Manipuri Corpus & OCR Pipeline](https://github.com/NansKong/Manipuri_Corpus) (pipeline version `1.0.0`, cleaner version `2.1`).
+
+### Corpus Manifest Summary (`manifest.json`)
+
+| Metric | Value |
+| :--- | :--- |
+| **Ingested & Processed Documents** | **15 documents** (out of 25 total PDF inventory) |
+| **Extracted & Scored Pages** | **4,158 pages** (7,221 total catalog pages) |
+| **Total Processed Word Count** | **857,464 words** |
+| **Mean OCR Quality Score** | **84.43 / 100** (Min: 27.5, Max: 95.0) |
+
+### Script & Language Distribution (Pages)
+
+- **Script Distribution**: Latin (`Latn`): **2,760 pages** | Bengali (`Beng`): **1,170 pages** | Generic/Symbols (`Zyyy`): **219 pages** | Devanagari (`Deva`): **9 pages**
+- **Language Distribution**: Manipuri (`mni`): **2,159 pages** | English (`eng`): **1,988 pages** | Hindi (`hin`): **9 pages** | Undefined (`und`): **2 pages**
+
+### Ingested Data Category Breakdown
+
+| Category | Processed Pages | Document IDs |
+| :--- | :--- | :--- |
+| **Dictionary** | **1,440 pages** | M004, M008, M012, M023, M025 |
+| **Textbook** | **936 pages** | M003, M010, M021 |
+| **Grammar** | **775 pages** | M009, M011 |
+| **Cultural** | **594 pages** | M002, M005, M006 |
+| **Stories & Literature** | **337 pages** | M001 |
+| **Phonology** | **76 pages** | M007 |
+
+### Ingested Document Catalog
+
+| ID | Title | Author / Publisher | Category | Pages | Words | Script | Processing Engine |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **M001** | *A Collection of Manipuri Folktales* | CIIL / Bharatavani | Stories & Literature | 340 | 65,732 | Bengali | EasyOCR (bn+en) |
+| **M002** | *Ahangi Manipuri Mopi Lairik* | CIIL / Bharatavani | Cultural | 244 | 19,079 | Bengali | EasyOCR (bn+en) |
+| **M003** | *A Course in Manipuri (Conversational)* | P. C. Thoudam (CIIL) | Textbook | 228 | 31,996 | Latin / Bengali | EasyOCR (bn+en) |
+| **M004** | *A Dictionary of Manipuri Verbs* | P. C. Thoudam (CIIL) | Dictionary | 415 | 111,226 | Latin / Bengali | EasyOCR (bn+en) |
+| **M005** | *Manipuri Lerole Amasung Manipuri Khunnai* | CIIL / Bharatavani | Cultural | 160 | 30,739 | Bengali | EasyOCR 1.7 (bn+en) |
+| **M006** | *Manipuri Nursery Rhymes* | CIIL / Bharatavani | Cultural | 208 | 15,617 | Bengali | EasyOCR 1.7 (bn+en) |
+| **M007** | *Manipuri Phonology (Primary)* | Manipur University | Phonology | 79 | 10,571 | Latin | EasyOCR 1.7 (bn+en) |
+| **M008** | *Manipuri Verbal Dictionary* | Manipur University | Dictionary | 300 | 99,933 | Bengali / Latin | EasyOCR 1.7 (bn+en) |
+| **M009** | *Structure of Manipuri (Metteiron Meaning)* | P. C. Thoudam (MU) | Grammar | 392 | 58,474 | Latin / Bengali | EasyOCR 1.7 (bn+en) |
+| **M010** | *Manipuri Kabitagi Chhanda (Class 11 & 12)* | COHSEM | Textbook | 161 | 22,116 | Bengali | EasyOCR 1.7 (bn+en) |
+| **M011** | *Matamgi Manipuri Grammar Amasung Composition* | COHSEM | Grammar | 390 | 54,927 | Bengali / Meetei Mayek | Tesseract 5.x (ben+eng) |
+| **M012** | *Dictionary of Manipuri Medical Terms* | B. Kulachandra Sharma | Dictionary | 329 | 84,632 | Bengali / Meetei Mayek | Tesseract 5.x (ben+eng) |
+| **M021** | *Intensive Course in Manipuri* | P. C. Thoudam (CIIL) | Textbook | 554 | 83,294 | Bengali / Latin | Direct Extraction (pypdf) |
+| **M023** | *Glossary of Administrative Terms (Manipuri)* | CSTT (Govt of India) | Dictionary | 186 | 23,812 | Bengali / English | Direct Extraction (pypdf) |
+| **M025** | *Learner's Manipuri-English Dictionary* | P. C. Thoudam (MU) | Dictionary | 223 | 145,316 | Bengali / Latin | Direct Extraction (pypdf) |
 
 ---
 

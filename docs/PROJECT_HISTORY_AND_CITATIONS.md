@@ -42,7 +42,7 @@ Phase 7: Foundation Pretraining & 10-Step Evaluation Suite
 ### Key Milestones Achieved
 
 - **Phase 0–4 (Corpus & Tokenization Core)**: Developed modular Python preprocessing modules supporting streaming and local data ingestion. Trained subword tokenizers evaluated across vocabulary utilization, subword entropy, and zero `<unk>` emissions.
-- **Phase 5 (Master Corpus Scaling & Freezing)**: Constructed the master scaling CLI (`run_phase55.py`), executing cross-version deduplication that removed over 2,754,516 duplicate sequences across v1 and v2 snapshots. Cleaned OCR PDF data from raw archives (`d:/manipuri corpus`) using regex page marker cleaners and Latin character density thresholds.
+- **Phase 5 (Master Corpus Scaling & Freezing)**: Constructed the master scaling CLI (`run_phase55.py`), executing cross-version deduplication that removed over 2,754,516 duplicate sequences across v1 and v2 snapshots. Cleaned OCR PDF data from the **Manipuri Corpus & OCR Pipeline** using regex page marker cleaners and Latin character density thresholds.
 - **Phase 6 (Pretraining Preparation & Benchmark Suite)**: Packed tokenized sequences into uniform 512-token context windows for SmolLM-135M Causal LM training. Built held-out benchmark datasets for Perplexity, Translation, Script Conversion, and OCR Restoration.
 - **Phase 7 (Foundation Pretraining & Modular Evaluation)**: Executed 3 full epochs (13,596 global steps). Implemented a 10-step modular evaluation suite (`run_phase7_eval.py`) covering training analysis, script-wise perplexity, next-token prediction, multi-decoding strategies, script consistency, memorization testing, speed profiling, and report generation.
 - **Base Model Release Freezing**: Promoted the step-13,596 checkpoint to `ManipuriGPT-135M-Base-v1.0`, computed SHA256 checksums, generated `manifest.json`, and published the base model weights, dataset, and tokenizer to the Hugging Face Hub.
@@ -59,7 +59,7 @@ Phase 7: Foundation Pretraining & 10-Step Evaluation Suite
 | **Dayananda Meitei Mayek** | Hugging Face: `DayanandaThokchom/meitei_mayek_sample` | Monolingual | Meitei Mayek | CC-BY-4.0 | Native Meitei Mayek text corpus by Dayananda Thokchom. |
 | **Dayananda Parallel** | Hugging Face: `DayanandaThokchom/meitei-mayek-to-english` | Parallel | Meitei Mayek | CC-BY-4.0 | Meitei Mayek to English parallel translation corpus. |
 | **FLORES+ (mni_Beng)** | Hugging Face: `openlanguagedata/flores_plus` | Translation | Bengali | CC-BY-SA-4.0 | FLORES+ benchmark split for Manipuri (Bengali script). |
-| **EMA Lon & PDF Archive** | Local: `d:/manipuri corpus` | Monolingual | Mixed | Proprietary/Academic | OCR-processed Manipuri books, dictionaries, and scanned archives. |
+| **Manipuri Corpus & OCR Pipeline** | GitHub: [`NansKong/Manipuri_Corpus`](https://github.com/NansKong/Manipuri_Corpus) | Monolingual | Mixed | Proprietary/Academic | 15 processed PDFs (4,158 pages, 857,464 words) of Manipuri books, dictionaries, and scanned archives. |
 
 ---
 
