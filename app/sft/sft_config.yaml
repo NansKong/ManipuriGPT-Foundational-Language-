@@ -1,0 +1,27 @@
+# ManipuriGPT Phase 8 Task Grounding SFT Configuration (v1.1 Grounded)
+
+dataset_version: "v1.1-grounded-30k"
+total_target_records: 30000
+
+# Subtask Targets (Total = 30,000)
+# Translation (45%), Definitions (15%), Conversation (15%), QA (15%), Script Conversion (10%)
+task_targets:
+  translation_en_to_mm: 13500
+  translation_mm_to_en: 8500
+  definitions: 4500
+  script_conversion_bn_to_mm: 3000
+  qa: 4500
+  conversation: 4500
+
+# Corpus Source Sampling Weights
+corpus_weights:
+  native_meetei_mayek: 4.0  # M003, M007, M008, M010-M025
+  bengali_script: 2.0       # M001, M002, M005, M006, M009
+  parallel_external: 1.0    # Dayananda / Joyson cache
+
+# Quality & Validation Parameters
+min_quality_threshold: 0.85
+max_corpus_source_ratio: 0.30  # Max 30% contribution from single source
+train_ratio: 0.90
+val_ratio: 0.10
+seed: 42

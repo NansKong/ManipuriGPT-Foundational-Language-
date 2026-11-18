@@ -46,6 +46,11 @@ class ManipuriTrainer:
         # 2. Dataset loading & processing if not provided explicitly
         if train_dataset is None:
             raw_data = DatasetLoader(self.config).load()
+            from datasets import DatasetDict
+            if isinstance(raw_data, DatasetDict):
+                if "train" not in raw_data or not len(raw_data["train"]):
+                    raise ValueError("Training requires a non-empty train split")
+                raw_data = DatasetDict({s: raw_data[s] for s in ("train", "validation") if s in raw_data})
             processed_data = DatasetProcessor(self.config).process(raw_data, self.tokenizer)
             
             if hasattr(processed_data, "get") and processed_data.get("train"):
@@ -78,26 +83,11 @@ class ManipuriTrainer:
         
         if hasattr(self.backend_trainer, "train"):
             if self.config.resume_from_checkpoint:
-                import os
-                checkpoint_path = str(self.config.resume_from_checkpoint)
-                logger.info(f"ManipuriTrainer: Resuming training from checkpoint '{checkpoint_path}'")
-                
-                # CPU / BF16 TPU Safeguard: When fp16 is disabled, accelerator.scaler is None.
-                # If checkpoint contains GPU FP16 scaler.pt, backup scaler.pt so Trainer doesn't crash.
-                if self.config.precision != "fp16" and os.path.isdir(checkpoint_path):
-                    scaler_file = os.path.join(checkpoint_path, "scaler.pt")
-                    if os.path.isfile(scaler_file):
-                        try:
-                            os.rename(scaler_file, os.path.join(checkpoint_path, "scaler.pt.bak"))
-                            logger.info("ManipuriTrainer: Automatically backed up FP16 scaler.pt -> scaler.pt.bak for CPU/BF16 compatibility.")
-                        except Exception as e:
-                            logger.warning(f"ManipuriTrainer: Could not rename scaler.pt ({e})")
-
                 results = self.backend_trainer.train(resume_from_checkpoint=self.config.resume_from_checkpoint)
             else:
                 results = self.backend_trainer.train()
         else:
-            results = {"status": "completed", "global_step": self.config.max_steps or 0}
+            raise RuntimeError("Training backend cannot execute a training step")
 
         if not isinstance(results, dict):
             results = {"status": "completed", "details": str(results)}
@@ -119,7 +109,9 @@ class ManipuriTrainer:
             return {"eval_loss": 0.0, "status": "no_eval_dataset"}
         if hasattr(self.backend_trainer, "evaluate"):
             return self.backend_trainer.evaluate()
-        return {"eval_loss": 1.150, "perplexity": 3.15, "status": "simulated_eval"}
+        if self.config.dry_run:
+            return {"status": "simulated_eval"}
+        raise RuntimeError("Training backend cannot evaluate")
 
     def save_checkpoint(self, tag: str) -> str:
         """
@@ -128,11 +120,7 @@ class ManipuriTrainer:
         import os
         path = os.path.join(self.config.output_dir, tag)
         if hasattr(self.backend_trainer, "save_model"):
-            try:
-                self.backend_trainer.save_model(path)
-            except Exception as e:
-                logger.warning(f"ManipuriTrainer: Could not save model via backend_trainer ({e}). Creating directory.")
-                os.makedirs(path, exist_ok=True)
+            self.backend_trainer.save_model(path)
         else:
-            os.makedirs(path, exist_ok=True)
+            raise RuntimeError("Backend cannot save a checkpoint")
         return path

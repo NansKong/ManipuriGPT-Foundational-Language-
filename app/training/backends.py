@@ -33,7 +33,7 @@ class TransformersBackendWrapper(BaseBackendWrapper):
         train_dataset: Any,
         eval_dataset: Optional[Any] = None
     ) -> Any:
-        if self.config.dry_run or (isinstance(model, dict) and model.get("simulated")):
+        if self.config.dry_run:
             logger.info("TransformersBackendWrapper: Using MockTrainerInstance for dry-run simulation.")
             return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset)
 
@@ -54,7 +54,7 @@ class TransformersBackendWrapper(BaseBackendWrapper):
                 output_dir=self.config.output_dir,
                 learning_rate=self.config.learning_rate,
                 weight_decay=self.config.weight_decay,
-                warmup_steps=int(self.config.warmup_ratio * (self.config.max_steps or 1000)) if self.config.warmup_ratio else 100,
+                warmup_steps=int(self.config.warmup_ratio * (self.config.max_steps or 1000)),
                 lr_scheduler_type=self.config.lr_scheduler_type,
                 per_device_train_batch_size=self.config.batch_size,
                 gradient_accumulation_steps=self.config.gradient_accumulation_steps,
@@ -101,8 +101,7 @@ class TransformersBackendWrapper(BaseBackendWrapper):
             return trainer
 
         except Exception as e:
-            logger.warning(f"TransformersBackendWrapper: Real Trainer initialization failed ({e}). Falling back to MockTrainerInstance.")
-            return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset)
+            raise RuntimeError("TransformersBackendWrapper: Real Trainer initialization failed") from e
 
 
 class PEFTBackendWrapper(BaseBackendWrapper):
@@ -113,7 +112,7 @@ class PEFTBackendWrapper(BaseBackendWrapper):
         train_dataset: Any,
         eval_dataset: Optional[Any] = None
     ) -> Any:
-        if self.config.dry_run or (isinstance(model, dict) and model.get("simulated")):
+        if self.config.dry_run:
             return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset, trainer_type="PEFT_LoRA")
 
         try:
@@ -132,8 +131,7 @@ class PEFTBackendWrapper(BaseBackendWrapper):
             tf_backend = TransformersBackendWrapper(self.config)
             return tf_backend.create_trainer(peft_model, tokenizer, train_dataset, eval_dataset)
         except Exception as e:
-            logger.warning(f"PEFTBackendWrapper: PEFT initialization failed ({e}). Falling back to mock trainer.")
-            return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset, trainer_type="PEFT_LoRA")
+            raise RuntimeError("PEFTBackendWrapper: PEFT initialization failed") from e
 
 
 class TRLBackendWrapper(BaseBackendWrapper):
@@ -144,7 +142,7 @@ class TRLBackendWrapper(BaseBackendWrapper):
         train_dataset: Any,
         eval_dataset: Optional[Any] = None
     ) -> Any:
-        if self.config.dry_run or (isinstance(model, dict) and model.get("simulated")):
+        if self.config.dry_run:
             return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset, trainer_type="TRL_SFT/DPO")
 
         try:
@@ -187,8 +185,7 @@ class TRLBackendWrapper(BaseBackendWrapper):
             logger.info("TRLBackendWrapper: TRL SFTTrainer initialized.")
             return trainer
         except Exception as e:
-            logger.warning(f"TRLBackendWrapper: TRL initialization failed ({e}). Falling back to mock trainer.")
-            return MockTrainerInstance(self.config, model, tokenizer, train_dataset, eval_dataset, trainer_type="TRL_SFT/DPO")
+            raise RuntimeError("TRLBackendWrapper: TRL initialization failed") from e
 
 
 class MockTrainerInstance:
@@ -205,11 +202,12 @@ class MockTrainerInstance:
         self.state = {"global_step": 0, "status": "initialized"}
 
     def train(self) -> Dict[str, Any]:
-        steps = self.config.max_steps or 20 if self.config.dry_run else 100
+        steps = self.config.max_steps or 20
         logger.info(f"MockTrainerInstance ({self.trainer_type}): Simulating {steps} training steps for mode '{self.config.mode}'...")
         self.state["global_step"] = steps
         self.state["status"] = "completed"
         return {
+            "simulated": True,
             "global_step": steps,
             "training_loss": 1.234,
             "validation_loss": 1.150,
@@ -222,6 +220,7 @@ class MockTrainerInstance:
         import os, json
         os.makedirs(path, exist_ok=True)
         meta = {
+            "simulated": True,
             "model_name": self.config.model_name,
             "mode": self.config.mode,
             "backend": self.trainer_type,
@@ -239,6 +238,8 @@ class BackendFactory:
     @staticmethod
     def get_backend(config: TrainingConfig) -> BaseBackendWrapper:
         b = config.backend.lower()
+        if b in {"unsloth", "deepspeed"} or config.mode in {"dpo", "orpo"}:
+            raise ValueError(f"Unsupported training configuration: {b}/{config.mode}")
         if b == "trl" or config.mode == "sft":
             return TRLBackendWrapper(config)
         elif b == "peft" or config.mode in ["lora", "qlora"]:

@@ -49,6 +49,8 @@ desktop.ini
 *.log
 *.parquet
 *.jsonl
+/app/corpus/native_speaker_feedback.json
+/app/corpus/romanized_course.json
 *.arrow
 
 # ML training/checkpoint state and large model files

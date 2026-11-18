@@ -25,60 +25,13 @@ class PretrainingBenchmarkSuite:
 
     def extract_parallel_pairs(self, records: List[Dict[str, Any]]) -> List[Dict[str, str]]:
         """Extract parallel English-Manipuri sentence pairs across explicit keys and dual-script delimiters."""
-        import re
-        pairs = []
-        seen = set()
-
-        latin_pat = re.compile(r'[A-Za-z]')
-        meitei_bn_pat = re.compile(r'[\uABC0-\uABFF\u1C80-\u1C8F\u0980-\u09FF]')
-
-        for r in records:
-            source_name = str(r.get("source", "unknown")).lower()
-            
-            # 1. Check explicit dict keys
-            eng = r.get("english_parallel") or r.get("english") or r.get("en_text") or r.get("src") or r.get("en")
-            mni = r.get("meitei_text") or r.get("mni_text") or r.get("manipuri") or r.get("tgt")
-            if eng and mni and len(str(eng)) >= 10 and len(str(mni)) >= 10:
-                pair_key = (str(eng).strip(), str(mni).strip())
-                if pair_key not in seen:
-                    seen.add(pair_key)
-                    pairs.append({"english": str(eng).strip(), "manipuri": str(mni).strip(), "source": source_name})
-                    continue
-
-            # 2. Check text string for dual-script parallel sentence delimiters
-            text = str(r.get("text", ""))
-            if not text:
-                continue
-
-            is_parallel_src = any(k in source_name for k in ["dayananda", "joyson", "ema_lon", "parallel", "trans"])
-
-            if is_parallel_src or (len(latin_pat.findall(text)) >= 8 and len(meitei_bn_pat.findall(text)) >= 8):
-                for delim in ["\t", " ||| ", " | ", " => ", " :: ", " - ", "\n"]:
-                    if delim in text:
-                        parts = [p.strip() for p in text.split(delim) if len(p.strip()) >= 10]
-                        if len(parts) >= 2:
-                            for i in range(len(parts) - 1):
-                                p1, p2 = parts[i], parts[i+1]
-                                l1, m1 = len(latin_pat.findall(p1)), len(meitei_bn_pat.findall(p1))
-                                l2, m2 = len(latin_pat.findall(p2)), len(meitei_bn_pat.findall(p2))
-
-                                if l1 > m1 and m2 > l2:
-                                    pair_key = (p1, p2)
-                                    if pair_key not in seen:
-                                        seen.add(pair_key)
-                                        pairs.append({"english": p1, "manipuri": p2, "source": source_name})
-                                        break
-                                elif m1 > l1 and l2 > m2:
-                                    pair_key = (p2, p1)
-                                    if pair_key not in seen:
-                                        seen.add(pair_key)
-                                        pairs.append({"english": p2, "manipuri": p1, "source": source_name})
-                                        break
-                        if len(pairs) >= 500:
-                            break
-            if len(pairs) >= 500:
-                break
-        return pairs
+        pairs = {}
+        for record in records:
+            en = record.get("english_parallel") or record.get("english") or record.get("en_text") or record.get("en")
+            mni = record.get("meitei_text") or record.get("mni_text") or record.get("manipuri")
+            if en and mni and en.strip() != mni.strip():
+                pairs[(en.strip(), mni.strip())] = dict(english=en.strip(), manipuri=mni.strip(), source=record.get("source"))
+        return list(pairs.values())
 
     def build_benchmarks(
         self,
@@ -104,7 +57,7 @@ class PretrainingBenchmarkSuite:
         summary["perplexity_samples"] = len(lm_records)
 
         # 2. Parallel Translation Benchmark (English ↔ Manipuri)
-        all_pool = (test_records or []) + (train_records or [])
+        all_pool = test_records or []
         extracted_pairs = self.extract_parallel_pairs(all_pool)
         trans_records = [
             {
@@ -124,20 +77,12 @@ class PretrainingBenchmarkSuite:
 
         # 3. Script Conversion Benchmark (Meitei Mayek ↔ Bengali Script pairs)
         script_records = []
-        try:
-            from app.preprocessing.normalizer import UnicodeNormalizer
-            norm = UnicodeNormalizer({})
-            for i, r in enumerate(test_records):
-                text = r.get("text", "")
-                scr = r.get("script", "")
-                if scr == "meitei" and len(text) >= 20:
-                    script_records.append({
-                        "id": f"script_conv_{i:04d}",
-                        "meitei_mayek": text,
-                        "bengali_script": norm.transliterate_meitei_to_bengali(text) if hasattr(norm, "transliterate_meitei_to_bengali") else text
-                    })
-        except Exception as e:
-            logger.warning(f"Could not construct script conversion benchmark: {e}")
+        for i, row in enumerate(test_records):
+            mtei, beng = row.get("meitei_mayek"), row.get("bengali_script")
+            if mtei and beng:
+                if mtei.strip() == beng.strip():
+                    raise ValueError("Copied source supplied as a conversion reference")
+                script_records.append(dict(id=f"script_conv_{i:04d}", meitei_mayek=mtei, bengali_script=beng))
 
         script_records = script_records[:500]
         script_file = os.path.join(output_dir, "benchmark_script_conversion.jsonl")
@@ -163,6 +108,7 @@ class PretrainingBenchmarkSuite:
                     ocr_records.append({
                         "id": f"ocr_corr_{i:04d}",
                         "noisy_text": noisy,
+                        "noise_source": "synthetic",
                         "target_clean_text": text
                     })
                     if len(ocr_records) >= 300:
@@ -178,6 +124,7 @@ class PretrainingBenchmarkSuite:
         suite_manifest = {
             "suite_version": "1.0",
             "seed": self.seed,
+            "unavailable": [name for name, count in summary.items() if count == 0],
             "benchmarks": summary
         }
         with open(os.path.join(output_dir, "benchmark_manifest.json"), "w", encoding="utf-8") as f:

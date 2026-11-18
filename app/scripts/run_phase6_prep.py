@@ -6,7 +6,7 @@ and constructs the held-out pre-training benchmark suite (Perplexity, Translatio
 Script Conversion, and OCR Correction).
 
 Usage:
-  python -m app.scripts.run_phase6_prep --corpus-dir artifacts/datasets/ManipuriGPT-Corpus-v1.0
+  python -m app.scripts.run_phase6_prep --corpus-dir artifacts/training/meitei-lon/corpus
 """
 
 import os
@@ -26,7 +26,7 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--corpus-dir",
         type=str,
-        default="artifacts/datasets/ManipuriGPT-Corpus-v1.0",
+        default="artifacts/training/meitei-lon/corpus",
         help="Directory containing frozen ManipuriGPT-Corpus-v1.0 snapshot",
     )
     parser.add_argument(
@@ -45,7 +45,7 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="artifacts/phase6_pretraining",
+        default="artifacts/training/meitei-lon/packed",
         help="Output directory for packed datasets and benchmark suite",
     )
     return parser.parse_args(args_list)
@@ -53,27 +53,15 @@ def parse_args(args_list: Optional[List[str]] = None) -> argparse.Namespace:
 
 def load_split_records(dataset_dir: str, split: str = "train") -> List[dict]:
     """Load records from a dataset split."""
-    try:
-        import pyarrow.parquet as pq
-    except ImportError:
-        logger.error("pyarrow is required to load dataset records.")
-        return []
+    from pathlib import Path
+    import pyarrow.parquet as pq
 
-    split_dir = os.path.join(dataset_dir, split)
-    if not os.path.isdir(split_dir):
-        return []
-
-    records = []
-    for f in sorted(os.listdir(split_dir)):
-        if f.endswith(".parquet"):
-            fp = os.path.join(split_dir, f)
-            try:
-                table = pq.read_table(fp)
-                df = table.to_pandas()
-                records.extend(df.to_dict(orient="records"))
-            except Exception as e:
-                logger.warning(f"Error loading {fp}: {e}")
-    return records
+    folder = Path(dataset_dir)
+    release = folder / "data" / f"{split}.parquet"
+    paths = [release] if release.exists() else sorted((folder / split).glob("*.parquet"))
+    if not paths:
+        raise FileNotFoundError(f"Missing corpus split {split} in {folder}")
+    return [row for path in paths for row in pq.read_table(path).to_pylist()]
 
 
 def main(args_list: Optional[List[str]] = None) -> int:
@@ -93,8 +81,8 @@ def main(args_list: Optional[List[str]] = None) -> int:
     tok_path = args.tokenizer_path
     if not tok_path:
         tok_path = os.path.join(args.corpus_dir, "tokenizer", "tokenizer.model")
-    if not os.path.exists(tok_path):
-        tok_path = "artifacts/tokenizer_v1.0/tokenizer.model"
+        if not os.path.exists(tok_path):
+            tok_path = "artifacts/tokenizer_v1.0/tokenizer.model"
 
     if not os.path.exists(tok_path):
         logger.error(f"No tokenizer model found at '{tok_path}'. Aborting.")

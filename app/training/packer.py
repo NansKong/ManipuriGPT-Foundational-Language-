@@ -39,7 +39,7 @@ class SequencePacker:
         for text in texts:
             if not text:
                 continue
-            token_ids = self.sp.Encode(str(text).strip())
+            token_ids = self.sp.Encode(str(text))
             if not token_ids:
                 continue
 

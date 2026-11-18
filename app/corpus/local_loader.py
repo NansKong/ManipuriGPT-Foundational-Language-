@@ -17,6 +17,7 @@ import os
 import json
 import hashlib
 from typing import Iterator, Dict, Any, Optional, List
+from app.corpus.book_ocr import review_reason
 from app.utils.logger import logger
 
 
@@ -92,14 +93,14 @@ LOCAL_SOURCE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "year": 2024,
         "default_category": "government",
     },
-    "d_drive_manipuri_corpus_processed": {
-        "description": "Manipuri Corpus (Books, Dictionaries, Literature, Textbooks from D:/manipuri corpus)",
+    "e_drive_manipuri_corpus_processed": {
+        "description": "Manipuri Corpus (Books, Dictionaries, Literature, Textbooks from E:/manipuri corpus)",
         "license": "To be determined",
         "year": 2024,
         "default_category": "literature",
         "ocr_confidence_min": 40.0,
         "quality_min": 50.0,
-        "metadata_dir": "D:/manipuri corpus/metadata",
+        "metadata_dir": "E:/manipuri corpus/metadata",
     },
 }
 
@@ -220,6 +221,8 @@ class LocalCorpusLoader:
                     if len(text) < self.min_text_length:
                         continue
 
+                    if review_reason(doc_key, rec):
+                        continue
                     # OCR quality gate
                     ocr_conf = rec.get("ocr_confidence", sidecar_meta.get("avg_ocr_confidence"))
                     quality = rec.get("quality", sidecar_meta.get("avg_quality_score"))

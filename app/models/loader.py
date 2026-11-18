@@ -106,6 +106,10 @@ class ModelLoader:
                 model_name_or_path = self.config.model_name
 
         tokenizer_path = self.config.tokenizer_name_or_path or model_name_or_path
+        if self.config.model_name == "manipurigpt_135m" and not self.config.model_name_or_path:
+            from app.training.meitei_lon import BASE, TOKENIZER
+            model_name_or_path = str(BASE)
+            tokenizer_path = self.config.tokenizer_name_or_path or str(TOKENIZER)
 
         logger.info(f"ModelLoader: Loading model '{model_name_or_path}' and tokenizer '{tokenizer_path}'...")
 
@@ -130,6 +134,8 @@ class ModelLoader:
             logger.info(f"ModelLoader: Tokenizer loaded successfully (vocab_size={len(tokenizer):,})")
             return tokenizer
         except Exception as e:
+            if not self.config.dry_run:
+                raise
             logger.warning(f"ModelLoader: Could not load real tokenizer '{tokenizer_path}' ({e}). Using mock tokenizer fallback.")
             return MockTokenizerWrapper()
 
@@ -160,6 +166,8 @@ class ModelLoader:
             if hasattr(model, "get_input_embeddings") and model.get_input_embeddings() is not None:
                 current_vocab = model.get_input_embeddings().weight.shape[0]
                 if current_vocab != vocab_size:
+                    if self.config.model_name == "manipurigpt_135m":
+                        raise ValueError("Tokenizer size differs from the ManipuriGPT base embedding table")
                     logger.info(f"ModelLoader: Resizing model token embeddings ({current_vocab} -> {vocab_size})...")
                     model.resize_token_embeddings(vocab_size)
                     if hasattr(model, "tie_weights"):
@@ -172,6 +180,8 @@ class ModelLoader:
             logger.info("ModelLoader: Model loaded successfully.")
             return model
         except Exception as e:
+            if not self.config.dry_run:
+                raise
             logger.warning(f"ModelLoader: Could not load real model '{model_path}' ({e}). Using simulated model object.")
             return {
                 "name": model_path,

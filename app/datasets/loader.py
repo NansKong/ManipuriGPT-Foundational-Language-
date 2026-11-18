@@ -40,6 +40,12 @@ class DatasetLoader:
     def _load_local(self, path: str, split: Optional[str] = None) -> Any:
         logger.info(f"DatasetLoader: Reading local path '{path}'...")
         if os.path.isdir(path):
+            from pathlib import Path
+            for folder in (Path(path) / "data", Path(path)):
+                mapped = {s: str(folder / f"{s}.parquet") for s in ("train", "validation", "test")
+                          if (folder / f"{s}.parquet").is_file()}
+                if "train" in mapped:
+                    return load_dataset("parquet", data_files=mapped, split=split)
             # Check for split subdirectories (e.g., train/, validation/, test/)
             train_dir = os.path.join(path, "train")
             if os.path.isdir(train_dir):
@@ -53,7 +59,7 @@ class DatasetLoader:
                 if data_files:
                     logger.info(f"DatasetLoader: Found split directories in '{path}': {list(data_files.keys())}")
                     ext = "parquet" if any(f.endswith(".parquet") for files in data_files.values() for f in files) else "json"
-                    return load_dataset(ext, data_files=data_files)
+                    return load_dataset(ext, data_files=data_files, split=split)
             
             # Check for parquet files directly in directory
             parquet_files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith(".parquet")]
@@ -80,6 +86,8 @@ class DatasetLoader:
             logger.info(f"DatasetLoader: Successfully loaded dataset '{repo_id}' from HF Hub")
             return ds
         except Exception as e:
+            if not self.config.dry_run:
+                raise
             logger.warning(f"DatasetLoader: Failed to load '{repo_id}' from Hugging Face Hub ({e}). Using mock dataset fallback.")
             return DatasetDict({
                 "train": Dataset.from_list([{"text": "Sample Manipuri pretraining sentence."} for _ in range(50)]),

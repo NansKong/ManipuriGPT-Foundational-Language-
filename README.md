@@ -11,8 +11,27 @@ The project supports Manipuri across **Meitei Mayek** (native Unicode standard),
 | Resource | Type | Hugging Face Repository | Description |
 | :--- | :--- | :--- | :--- |
 | **`ManipuriGPT-Corpus-v1.0`** | Dataset | [nanskong/ManipuriGPT-Corpus-v1.0](https://huggingface.co/datasets/nanskong/ManipuriGPT-Corpus-v1.0) | Research-grade, deduplicated, quality-scored multi-script Manipuri corpus |
-| **`ManipuriGPT-Tokenizer-v1.0`** | Tokenizer | [nanskong/ManipuriGPT-Tokenizer-v1](https://huggingface.co/nanskong/ManipuriGPT-Tokenizer-v1) | 8,000 vocab SentencePiece BPE tokenizer with 0% `<unk>` error rate |
+| **`ManipuriGPT-Tokenizer-v1.0`** | Tokenizer | [nanskong/ManipuriGPT-Tokenizer-v1](https://huggingface.co/nanskong/ManipuriGPT-Tokenizer-v1) | The frozen SentencePiece BPE used by the 135M base has 32,000 token IDs. |
 | **`ManipuriGPT-135M-Base-v1.0`** | **Base Model** | [nanskong/ManipuriGPT-135M-Base-v1.0](https://huggingface.co/nanskong/ManipuriGPT-135M-Base-v1.0) | **Official Pretrained Foundation Model** (SmolLM-135M base, 13.5k steps) |
+
+---
+
+## Reviewed Meitei-lon training workflow
+
+The current workflow continues pretraining from the 135M base with a SentencePiece-compatible 32,000-token export, then trains a fresh LoRA adapter. It covers Meitei Mayek, Bengali-script Manipuri, and Romanized Manipuri. Evaluation compares the candidate with the v1.1 adapter on the same held-out examples, including native-speaker translation and conversation references.
+
+From the project root, use your configured Python environment. With the existing Windows project environment, the commands are:
+
+```powershell
+& .\manipuri\Scripts\python.exe -m app.scripts.run_meitei_lon check
+& .\manipuri\Scripts\python.exe -m app.scripts.run_meitei_lon pretrain
+& .\manipuri\Scripts\python.exe -m app.scripts.run_meitei_lon fine-tune
+& .\manipuri\Scripts\python.exe -m app.scripts.run_meitei_lon evaluate
+```
+
+`check` verifies the required files and prepared data hashes without starting training. The later stages run in order and save to `artifacts/models/meitei-lon-v1.2` by default. This workflow uses local model weights and prepared data. See the [training guide](docs/MEITEI_LON_TRAINING.md) for the local inputs, pilot options, and evaluation outputs.
+
+The current prepared release contains 145,121 pretraining rows and 26,062 instruction examples. Romanized training coverage includes 52 sentence rows. The new model's language quality awaits training and native-speaker evaluation.
 
 ---
 
@@ -107,12 +126,11 @@ The foundation model pretraining pipeline incorporates digitized Manipuri books,
 ## Model Lineage & Hierarchy
 
 ```text
-ManipuriGPT-135M-Base-v1.0  (Immutable Base Foundation Model Release)
+ManipuriGPT-135M-Base-v1.0  (Published base)
         │
-        ├── ManipuriGPT-135M-SFT-v1.0   (Phase 8: Instruction Fine-Tuning)
-        ├── ManipuriGPT-135M-SFT-v2.0   (Multi-Task & Reasoning Tuning)
-        ├── ManipuriGPT-135M-DPO-v1.0   (Direct Preference Optimization)
-        └── ManipuriGPT-135M-Chat-v1.0  (Conversational Assistant)
+        ├── Local v1.1 LoRA adapter (evaluation baseline)
+        └── Reviewed continued pretraining (prepared workflow)
+                └── Fresh LoRA adapter (pending training)
 ```
 
 ---

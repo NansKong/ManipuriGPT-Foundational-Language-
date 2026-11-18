@@ -13,29 +13,29 @@ class TrainingConfig:
     Declarative configuration for ManipuriGPT model training across backends.
     Supports modes: `full`, `lora`, `qlora`, `dpo`, `orpo`, `continued_pretraining`, `sft`.
     """
-    model_name: str = "smollm_135m"
+    model_name: str = "manipurigpt_135m"
     model_name_or_path: Optional[str] = None
     tokenizer_name_or_path: Optional[str] = None
     mode: str = "continued_pretraining"  # "full", "lora", "qlora", "dpo", "orpo", "continued_pretraining", "sft"
     backend: str = "transformers"  # "transformers", "trl", "peft", "unsloth", "deepspeed"
     
     # Dataset configuration
-    dataset_name_or_path: str = "nanskong/ManipuriGPT-Corpus-v1.0"
+    dataset_name_or_path: str = "artifacts/training/meitei-lon/corpus"
     dataset_split: Optional[str] = None
     use_streaming: bool = False
     is_packed: bool = False
     
     # Precision & Optimization
     precision: str = "fp16"  # "fp16", "bf16", "fp32" (Auto-selects fp16 for Tesla T4)
-    learning_rate: float = 2e-4
+    learning_rate: float = 1e-5
     weight_decay: float = 0.01
     warmup_ratio: float = 0.03
     lr_scheduler_type: str = "cosine"
     
     # Batching & Context
-    batch_size: int = 4
+    batch_size: int = 1
     gradient_accumulation_steps: int = 8
-    max_seq_length: int = 2048
+    max_seq_length: int = 512
     num_epochs: int = 3
     max_steps: Optional[int] = None
     

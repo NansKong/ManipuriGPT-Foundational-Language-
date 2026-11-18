@@ -1,0 +1,14 @@
+# Apply alongside the project's training requirements.
+# These versions record the existing, verified project environment.
+# Its installed GPU wheels use CUDA 12.1.
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+transformers==5.14.0
+peft==0.19.1
+accelerate==1.14.0
+datasets==5.0.0
+pyarrow==25.0.0
+sentencepiece==0.2.2
+tokenizers==0.22.2
+safetensors==0.8.0

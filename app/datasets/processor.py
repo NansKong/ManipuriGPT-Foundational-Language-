@@ -61,6 +61,9 @@ class DatasetProcessor:
                 text_column = col_names[0]
 
         max_len = self.config.max_seq_length
+        if max_len < 2:
+            raise ValueError("Causal language modeling needs at least two token positions")
+        pack = self.config.is_packed and self.config.mode in ["continued_pretraining", "full"]
 
         def tokenize_fn(examples: Dict[str, List[Any]]) -> Dict[str, Any]:
             texts = examples[text_column]
@@ -69,11 +72,15 @@ class DatasetProcessor:
             
             tokenized = tokenizer(
                 texts,
-                truncation=True,
-                max_length=max_len,
+                truncation=not pack,
+                max_length=None if pack else max_len - 1,
+                add_special_tokens=False,
                 padding=False,
                 return_attention_mask=True
             )
+            for ids, mask in zip(tokenized["input_ids"], tokenized["attention_mask"]):
+                ids.append(tokenizer.eos_token_id)
+                mask.append(1)
             return tokenized
 
         # Remove non-tensor columns to save memory
@@ -86,9 +93,13 @@ class DatasetProcessor:
             remove_columns=cols_to_remove,
             desc="Tokenizing dataset"
         )
+        processed = processed.filter(
+            lambda row: len(row["input_ids"]) > 1,
+            desc="Removing empty documents",
+        )
         
         # Sequence packing for pretraining if requested
-        if self.config.is_packed and self.config.mode in ["continued_pretraining", "full"]:
+        if pack:
             processed = self._pack_sequences(processed, max_len)
 
         return processed
@@ -102,14 +113,16 @@ class DatasetProcessor:
         def group_texts(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
             concatenated = {k: sum(examples[k], []) for k in examples.keys()}
             total_length = len(concatenated[list(examples.keys())[0]])
-            if total_length >= block_size:
-                total_length = (total_length // block_size) * block_size
             
             result = {
                 k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
                 for k, t in concatenated.items()
             }
-            result["labels"] = result["input_ids"].copy()
+            # A one-token tail has no shifted causal target. Supply its preceding
+            # token as context so the remaining token contributes a valid loss.
+            if total_length > 1 and total_length % block_size == 1:
+                for key, values in concatenated.items():
+                    result[key][-1] = values[-2:]
             return result
 
         packed = dataset.map(
